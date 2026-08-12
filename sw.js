@@ -1,30 +1,5 @@
-// FieldBar POS — offline PWA service worker (auto-update on deploy)
-const CACHE = 'fieldbar_v1';
-const PRECACHE = ['index.html', 'manifest.json', 'icon-192.png', 'icon-512.png'];
-
-self.addEventListener('install', (e) => {
-  self.skipWaiting();
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(PRECACHE).catch(() => {})).then(() => self.skipWaiting()));
-});
-self.addEventListener('activate', (e) => {
-  e.waitUntil((async () => {
-    const keys = await caches.keys();
-    await Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)));
-    await self.clients.claim();
-    const all = await self.clients.matchAll({ includeUncontrolled: true, type: 'window' });
-    all.forEach(c => { try { c.navigate(c.url); } catch (_) {} });
-  })());
-});
-self.addEventListener('fetch', (e) => {
-  const req = e.request;
-  if (req.method !== 'GET') return;
-  const url = new URL(req.url);
-  if (req.mode === 'navigate' || url.pathname.endsWith('.html')) {
-    e.respondWith((async () => {
-      try { const f = await fetch(req); const c = await caches.open(CACHE); c.put(req, f.clone()); return f; }
-      catch { return (await caches.match(req)) || caches.match('index.html'); }
-    })());
-    return;
-  }
-  e.respondWith(caches.match(req).then(r => r || fetch(req).catch(() => caches.match('index.html'))));
-});
+const CACHE='fieldbar-v2-1';
+const ASSETS=['./','./index.html','./manifest.json','./icon-192.png','./icon-512.png'];
+self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting()));});
+self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
+self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).then(resp=>{const cp=resp.clone();caches.open(CACHE).then(c=>c.put(e.request,cp));return resp;}).catch(()=>caches.match('./index.html'))));});

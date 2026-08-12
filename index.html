@@ -3,26 +3,32 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>FieldBar POS</title>
+<title>FieldBar POS v2</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#0F172A">
 <style>
   :root{
     --bg:#0f172a; --panel:#1e293b; --panel2:#273449; --line:#334155;
-    --txt:#e2e8f0; --muted:#94a3b8; --accent:#0EA5E9; --good:#22c55e;
-    --warn:#f59e0b; --bad:#ef4444; --ink:#0b1220;
+    --txt:#e2e8f0; --muted:#94a3b8; --ink:#0b1220;
+    --counter:#0EA5E9; --waiter:#22c55e; --boss:#a855f7;
+    --good:#22c55e; --warn:#f59e0b; --bad:#ef4444;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;height:100%}
   body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--txt);font-size:15px}
+  .hidden{display:none!important}
   header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--bg);z-index:30}
   header h1{font-size:17px;margin:0;flex:1}
-  .btn{background:var(--accent);color:#04141f;border:0;border-radius:10px;padding:10px 14px;font-weight:700;font-size:14px;cursor:pointer}
+  .role-chip{font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px}
+  .btn{background:var(--counter);color:#04141f;border:0;border-radius:10px;padding:10px 14px;font-weight:700;font-size:14px;cursor:pointer}
   .btn.ghost{background:var(--panel2);color:var(--txt)}
   .btn.sm{padding:7px 10px;font-size:13px}
+  .btn.green{background:var(--waiter);color:#052e16}
+  .btn.purple{background:var(--boss);color:#fff}
+  .btn.warn{background:var(--warn);color:#3a2a00}
   .tabbar{display:flex;gap:6px;padding:8px 12px;border-bottom:1px solid var(--line);overflow-x:auto}
   .tab{padding:8px 14px;border-radius:999px;background:var(--panel);color:var(--muted);white-space:nowrap;cursor:pointer;font-size:13px;font-weight:600}
-  .tab.on{background:var(--accent);color:#04141f}
+  .tab.on{background:var(--counter);color:#04141f}
   .view{display:none;padding:14px 16px 90px}
   .view.on{display:block}
   .grid{display:grid;gap:10px}
@@ -30,17 +36,16 @@
   .pcard{background:var(--panel);border-radius:12px;padding:12px;cursor:pointer;border:1px solid transparent}
   .pcard:active{transform:scale(.97)}
   .pcard .nm{font-weight:700}
-  .pcard .pr{color:var(--accent);font-weight:700;margin-top:4px}
+  .pcard .pr{color:var(--counter);font-weight:700;margin-top:4px}
   .pcard .st{color:var(--muted);font-size:12px;margin-top:6px}
   .pcard.low .st{color:var(--warn)}
-  .ticket{background:var(--panel);border-radius:12px;padding:12px;margin-bottom:10px;border-left:4px solid var(--accent)}
+  .ticket{background:var(--panel);border-radius:12px;padding:12px;margin-bottom:10px;border-left:4px solid var(--counter)}
   .ticket .top{display:flex;justify-content:space-between;align-items:center}
   .ticket .tt{font-weight:700;font-size:16px}
-  .ticket .waiter{font-size:12px;color:var(--muted)}
   .line{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px dashed var(--line);font-size:14px}
   .line .q{color:var(--muted);width:30px}
   .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin:8px 0}
-  input,select{background:var(--ink);color:var(--txt);border:1px solid var(--line);border-radius:9px;padding:10px;font-size:14px;width:100%}
+  input,select,textarea{background:var(--ink);color:var(--txt);border:1px solid var(--line);border-radius:9px;padding:10px;font-size:14px;width:100%;font-family:inherit}
   .modal{position:fixed;inset:0;background:rgba(2,6,23,.7);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
   .modal.on{display:flex}
   .sheet{background:var(--panel);border-radius:16px;width:100%;max-width:460px;max-height:88vh;overflow:auto;padding:16px}
@@ -53,9 +58,10 @@
   .kpi .n{font-size:24px;font-weight:800}
   .kpi .l{color:var(--muted);font-size:12px;margin-top:3px}
   .pill{display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;font-weight:700}
-  .pill.open{background:#1d4ed8;color:#fff}
-  .pill.served{background:#b45309;color:#fff}
+  .pill.sent{background:#1d4ed8;color:#fff}
+  .pill.fulfilled{background:#15803d;color:#fff}
   .pill.paid{background:#15803d;color:#fff}
+  .pill.pending{background:#b45309;color:#fff}
   .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#04141f;border:1px solid var(--line);padding:10px 16px;border-radius:10px;display:none;z-index:80}
   .toast.on{display:block}
   .muted{color:var(--muted)}
@@ -64,122 +70,153 @@
   th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line)}
   th{color:var(--muted)}
   .addfoot{position:fixed;bottom:0;left:0;right:0;padding:12px 16px;background:var(--bg);border-top:1px solid var(--line);display:flex;gap:10px;z-index:40}
-  textarea{width:100%;background:var(--ink);color:var(--txt);border:1px solid var(--line);border-radius:9px;padding:10px;font-family:inherit;font-size:14px}
+  /* launch */
+  #launch{position:fixed;inset:0;background:linear-gradient(160deg,#0f172a,#15233b);display:flex;flex-direction:column;justify-content:center;padding:24px;z-index:90}
+  #launch h2{text-align:center;font-size:22px;margin:0 0 4px}
+  #launch p.sub{text-align:center;color:var(--muted);margin:0 0 24px}
+  .rolebtn{display:flex;flex-direction:column;gap:4px;padding:18px;border-radius:16px;font-size:18px;font-weight:800;margin-bottom:14px;cursor:pointer;border:0;color:#04141f}
+  .rolebtn small{font-weight:500;font-size:12px;opacity:.8}
+  .rolebtn.counter{background:var(--counter)}
+  .rolebtn.waiter{background:var(--waiter);color:#052e16}
+  .rolebtn.boss{background:var(--boss);color:#fff}
+  .banner{position:sticky;top:56px;z-index:25;padding:6px 14px;font-size:12px;font-weight:700}
+  .banner.off{background:#3a0d0d;color:#fecaca;border-bottom:1px solid #7f1d1d}
+  .banner.warn{background:#3a2a00;color:#fde68a;border-bottom:1px solid #92740a}
+  .banner.ok{background:#052e16;color:#bbf7d0;border-bottom:1px solid #166534}
+  .pinbox{display:flex;gap:8px;justify-content:center;margin:16px 0}
+  .pinbox input{width:46px;text-align:center;font-size:22px;letter-spacing:6px;padding:8px}
 </style>
 </head>
 <body>
 
-<header>
-  <h1>🍸 FieldBar POS</h1>
-  <button class="btn ghost sm" onclick="showOwner()">Owner</button>
-  <button class="btn sm" onclick="openNightSummary()">Close Night</button>
-</header>
-
-<div class="tabbar" id="tabbar">
-  <div class="tab on" data-v="floor" onclick="switchView('floor')">Floor / Tickets</div>
-  <div class="tab" data-v="menu" onclick="switchView('menu')">Menu & Stock</div>
-  <div class="tab" data-v="credit" onclick="switchView('credit')">Customer Credit</div>
-  <div class="tab" data-v="waiter" onclick="switchView('waiter')">Waiters</div>
+<!-- LAUNCH / ROLE PICKER -->
+<div id="launch">
+  <h2>🍸 FieldBar POS</h2>
+  <p class="sub">Choose your role to start</p>
+  <button class="rolebtn counter" onclick="pickRole('counter')">🔵 Counter<small>Walk-in sales + fulfill waiter orders + own stock</small></button>
+  <button class="rolebtn waiter" onclick="pickRole('waiter')">🟢 Waiter<small>Take table orders, collect money, send to counter</small></button>
+  <button class="rolebtn boss" onclick="pickRole('boss')">🟣 Boss<small>Dashboard, close night, manage menu & staff</small></button>
+  <p class="small muted" style="text-align:center;margin-top:18px">Offline-first. Works without internet — all data stays on this device.<br>If internet drops, staff use the <b>Counter device</b> for everything.</p>
 </div>
 
-<!-- FLOOR / TICKETS -->
-<div class="view on" id="v-floor">
-  <div class="row">
-    <button class="btn" onclick="openNewTicket()">+ New Ticket / Table</button>
-    <select id="fFloor" onchange="renderFloor()" class="ghost" style="max-width:160px">
-      <option value="">All tickets</option><option value="open">Open</option><option value="served">Served</option><option value="paid">Paid</option>
-    </select>
-  </div>
-  <div id="floorList"></div>
-</div>
+<!-- APP -->
+<div id="app" class="hidden">
+  <header>
+    <h1 id="appTitle">FieldBar POS</h1>
+    <span class="role-chip" id="roleChip"></span>
+    <button class="btn ghost sm" onclick="goLaunch()">Switch</button>
+  </header>
 
-<!-- MENU & STOCK -->
-<div class="view" id="v-menu">
-  <div class="row">
-    <button class="btn" onclick="openProductEditor()">+ Add Item</button>
-    <input id="mSearch" placeholder="Search menu…" oninput="renderMenu()" style="flex:1">
-  </div>
-  <div class="grid cards" id="menuGrid"></div>
-</div>
+  <div id="syncBanner" class="banner off hidden"></div>
 
-<!-- CUSTOMER CREDIT -->
-<div class="view" id="v-credit">
-  <div class="row">
-    <button class="btn" onclick="openCreditEditor()">+ New Customer</button>
-  </div>
-  <div id="creditList"></div>
-</div>
-
-<!-- WAITERS -->
-<div class="view" id="v-waiter">
-  <div class="row"><button class="btn" onclick="openWaiterEditor()">+ Add Waiter</button></div>
-  <div id="waiterStats"></div>
-</div>
-
-<!-- OWNER MODAL -->
-<div class="modal" id="ownerModal">
-  <div class="sheet">
-    <h3>Owner Dashboard</h3>
-    <div class="grid cards" style="grid-template-columns:repeat(auto-fill,minmax(120px,1fr))">
-      <div class="kpi"><div class="n" id="oSales">0</div><div class="l">Today sales (GHS)</div></div>
-      <div class="kpi"><div class="n" id="oCash">0</div><div class="l">Cash</div></div>
-      <div class="kpi"><div class="n" id="oMomo">0</div><div class="l">MoMo</div></div>
-      <div class="kpi"><div class="n" id="oTab">0</div><div class="l">Tab / Credit</div></div>
-      <div class="kpi"><div class="n" id="oTix">0</div><div class="l">Tickets</div></div>
-      <div class="kpi"><div class="n" id="oLow">0</div><div class="l">Low stock items</div></div>
+  <!-- COUNTER -->
+  <div id="role-counter" class="roleview hidden">
+    <div class="tabbar">
+      <div class="tab on" data-cv="cwalk" onclick="switchC('cwalk')">Walk-in Sale</div>
+      <div class="tab" data-cv="cpending" onclick="switchC('cpending')">Waiter Orders</div>
+      <div class="tab" data-cv="cstock" onclick="switchC('cstock')">Stock</div>
+      <div class="tab" data-cv="crecv" onclick="switchC('crecv')">Receive</div>
     </div>
-    <h3 style="margin-top:16px">Top waiters (today)</h3>
-    <div id="ownerWaiters"></div>
-    <div class="row" style="margin-top:14px">
-      <button class="btn ghost" onclick="exportData()">Export Backup</button>
-      <button class="btn ghost" onclick="closeModal('ownerModal')">Close</button>
+    <div class="view on" id="cv-cwalk">
+      <div class="row"><button class="btn" onclick="openCounterSale()">+ New Walk-in Sale</button></div>
+      <div id="counterToday" class="row"></div>
+    </div>
+    <div class="view" id="cv-cpending"><div id="pendingList"></div></div>
+    <div class="view" id="cv-cstock"><div id="stockList"></div></div>
+    <div class="view" id="cv-crecv">
+      <div class="row"><button class="btn" onclick="importWaiterOrder()">📥 Import Waiter Order (file)</button></div>
+      <p class="small muted">Offline bridge: a waiter exports their order; you import it here and tap Fulfill so stock updates on this device.</p>
+      <input type="file" id="waiterFile" accept="application/json,.json" class="hidden" onchange="handleWaiterFile(event)">
     </div>
   </div>
+
+  <!-- WAITER -->
+  <div id="role-waiter" class="roleview hidden">
+    <div class="tabbar">
+      <div class="tab on" data-wv="wnew" onclick="switchW('wnew')">New Order</div>
+      <div class="tab" data-wv="wmine" onclick="switchW('wmine')">My Orders</div>
+      <div class="tab" data-wv="wexp" onclick="switchW('wexp')">Send to Counter</div>
+    </div>
+    <div class="view on" id="wv-wnew">
+      <div class="row"><button class="btn green" onclick="openWaiterOrder()">+ New Table Order</button></div>
+      <div id="waiterToday" class="row"></div>
+    </div>
+    <div class="view" id="wv-wmine"><div id="waiterOrders"></div></div>
+    <div class="view" id="wv-wexp">
+      <p class="small muted">When you finish an order, "Send to Counter" records your sale and (if online) pushes it. Offline, export the file and hand/airdrop it to the counter device.</p>
+      <div id="exportList"></div>
+    </div>
+  </div>
+
+  <!-- BOSS -->
+  <div id="role-boss" class="roleview hidden">
+    <div class="tabbar">
+      <div class="tab on" data-bv="bdash" onclick="switchB('bdash')">Dashboard</div>
+      <div class="tab" data-bv="bnight" onclick="switchB('bnight')">Close Night</div>
+      <div class="tab" data-bv="bmenu" onclick="switchB('bmenu')">Menu/Stock</div>
+      <div class="tab" data-bv="bstaff" onclick="switchB('bstaff')">Staff</div>
+      <div class="tab" data-bv="bset" onclick="switchB('bset')">Settings</div>
+    </div>
+    <div class="view on" id="bv-bdash"><div id="bossDash"></div></div>
+    <div class="view" id="bv-bnight"><div id="nightBox"></div></div>
+    <div class="view" id="bv-bmenu"><div id="bossMenu"></div></div>
+    <div class="view" id="bv-bstaff"><div id="bossStaff"></div></div>
+    <div class="view" id="bv-bset"><div id="bossSet"></div></div>
+  </div>
 </div>
 
-<!-- NEW TICKET -->
-<div class="modal" id="ticketModal">
+<!-- PIN MODAL -->
+<div class="modal" id="pinModal">
+  <div class="sheet" style="max-width:360px;text-align:center">
+    <h3>🟣 Boss PIN</h3>
+    <p class="small muted">Default PIN is 0000</p>
+    <div class="pinbox">
+      <input id="p1" maxlength="1" inputmode="numeric"><input id="p2" maxlength="1" inputmode="numeric"><input id="p3" maxlength="1" inputmode="numeric"><input id="p4" maxlength="1" inputmode="numeric">
+    </div>
+    <div class="row" style="justify-content:center">
+      <button class="btn ghost" onclick="closeModal('pinModal')">Cancel</button>
+      <button class="btn purple" onclick="checkPin()">Unlock</button>
+    </div>
+  </div>
+</div>
+
+<!-- COUNTER SALE MODAL -->
+<div class="modal" id="csaleModal">
   <div class="sheet">
-    <h3>New Ticket</h3>
+    <h3>Walk-in Sale</h3>
+    <label class="small muted">Table / Tag (optional)</label>
+    <input id="csTable" placeholder="e.g. Bar1 or Walk-in">
+    <div id="csItems" style="margin-top:10px"></div>
+    <div class="row"><button class="btn sm ghost" onclick="csAddRow()">+ Add item</button></div>
+    <div id="csTotal" style="font-weight:800;font-size:18px;margin:10px 0"></div>
+    <div class="row">
+      <div class="paybtn cash" onclick="counterSale('cash')">Cash</div>
+      <div class="paybtn momo" onclick="counterSale('momo')">MoMo</div>
+      <div class="paybtn credit" onclick="counterSale('credit')">Credit</div>
+    </div>
+    <div class="row" style="margin-top:10px"><button class="btn ghost" onclick="closeModal('csaleModal')">Cancel</button></div>
+  </div>
+</div>
+
+<!-- WAITER ORDER MODAL -->
+<div class="modal" id="worderModal">
+  <div class="sheet">
+    <h3>Table Order</h3>
     <label class="small muted">Table / Tag</label>
-    <input id="tTable" placeholder="e.g. T3 or Walk-in">
-    <label class="small muted" style="display:block;margin-top:10px">Customer name (for credit tab)</label>
-    <input id="tCust" placeholder="optional">
-    <label class="small muted" style="display:block;margin-top:10px">Waiter</label>
-    <select id="tWaiter"></select>
-    <div class="addfoot" style="position:static;border:0;padding:14px 0 0">
-      <button class="btn ghost" onclick="closeModal('ticketModal')">Cancel</button>
-      <button class="btn" onclick="createTicket()">Open Ticket</button>
+    <input id="woTable" placeholder="e.g. T3">
+    <div id="woItems" style="margin-top:10px"></div>
+    <div class="row"><button class="btn sm ghost" onclick="woAddRow()">+ Add item</button></div>
+    <div id="woTotal" style="font-weight:800;font-size:18px;margin:10px 0"></div>
+    <div class="row">
+      <div class="paybtn cash" onclick="waiterSale('cash')">Cash</div>
+      <div class="paybtn momo" onclick="waiterSale('momo')">MoMo</div>
+      <div class="paybtn credit" onclick="waiterSale('credit')">Credit</div>
     </div>
+    <div class="row" style="margin-top:10px"><button class="btn ghost" onclick="closeModal('worderModal')">Cancel</button></div>
   </div>
 </div>
 
-<!-- TICKET DETAIL / ORDER -->
-<div class="modal" id="orderModal">
-  <div class="sheet">
-    <h3 id="orderTitle">Ticket</h3>
-    <div id="orderItems"></div>
-    <hr style="border:0;border-top:1px solid var(--line);margin:12px 0">
-    <div class="row">
-      <select id="oProduct"></select>
-    </div>
-    <div class="row">
-      <input id="oQty" type="number" min="1" value="1" style="max-width:90px">
-      <button class="btn" onclick="addToTicket()">+ Add to ticket</button>
-    </div>
-    <div id="orderTotal" style="font-weight:800;font-size:18px;margin:10px 0"></div>
-    <div class="row">
-      <div class="paybtn cash" onclick="payTicket('cash')">Cash</div>
-      <div class="paybtn momo" onclick="payTicket('momo')">MoMo</div>
-      <div class="paybtn credit" onclick="payTicket('credit')">Credit</div>
-    </div>
-    <div class="row" style="margin-top:10px">
-      <button class="btn ghost" onclick="closeModal('orderModal')">Close</button>
-    </div>
-  </div>
-</div>
-
-<!-- PRODUCT EDITOR -->
+<!-- PRODUCT MODAL (boss) -->
 <div class="modal" id="prodModal">
   <div class="sheet">
     <h3 id="prodTitle">Add Menu Item</h3>
@@ -195,7 +232,19 @@
   </div>
 </div>
 
-<!-- CREDIT EDITOR -->
+<!-- WAITER ADD (boss) -->
+<div class="modal" id="waitModal">
+  <div class="sheet">
+    <h3>Add Waiter</h3>
+    <input id="wName" placeholder="Waiter name">
+    <div class="addfoot" style="position:static;border:0;padding:14px 0 0">
+      <button class="btn ghost" onclick="closeModal('waitModal')">Cancel</button>
+      <button class="btn" onclick="saveWaiter()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- CREDIT ADD (boss) -->
 <div class="modal" id="credModal">
   <div class="sheet">
     <h3>New Credit Customer</h3>
@@ -209,40 +258,15 @@
   </div>
 </div>
 
-<!-- WAITER EDITOR -->
-<div class="modal" id="waitModal">
-  <div class="sheet">
-    <h3>Add Waiter</h3>
-    <input id="wName" placeholder="Waiter name">
-    <div class="addfoot" style="position:static;border:0;padding:14px 0 0">
-      <button class="btn ghost" onclick="closeModal('waitModal')">Cancel</button>
-      <button class="btn" onclick="saveWaiter()">Save</button>
-    </div>
-  </div>
-</div>
-
-<!-- NIGHT SUMMARY -->
-<div class="modal" id="nightModal">
-  <div class="sheet">
-    <h3>Close Night — Summary</h3>
-    <pre id="nightText" style="white-space:pre-wrap;font-size:13px;line-height:1.5"></pre>
-    <div class="row">
-      <button class="btn ghost" onclick="sendNightSMS()">SMS to Owner</button>
-      <button class="btn ghost" onclick="exportData()">Export</button>
-      <button class="btn" onclick="closeModal('nightModal')">Done</button>
-    </div>
-  </div>
-</div>
-
 <div class="toast" id="toast"></div>
 
 <script>
-/* ===== FieldBar POS — offline-first bar/nightclub POS =======
-   Reuses the FieldSales Pro local-first model (localStorage, no server).
-   Model: products(stock) -> tables/tickets(waiter) -> payment(cash/momo/credit)
-   -> customer credit -> owner summary + SMS (graceful offline). */
-const KEY='fieldbar_v1';
-const SMS_CONFIG={enabled:false, gateway:null, ownerPhone:''}; // set when a gateway is wired
+/* ===== FieldBar POS v2 — offline-first, 3-role =======
+   Roles: counter (walk-in + fulfill), waiter (order + collect), boss (dashboard).
+   Append-only ledger in localStorage. Cloud sync is OPTIONAL (SYNC_CONFIG).
+   Offline fallback: everyone uses the Counter device (single source of truth). */
+const KEY='fieldbar_v2';
+const SYNC_CONFIG={enabled:false, url:'', anon:''}; // fill later for multi-device cloud sync
 const SEED_PRODUCTS=[
   {id:'b1',name:'Star Beer',cat:'Beer',price:8,stock:60,low:15},
   {id:'b2',name:'Guinness',cat:'Beer',price:12,stock:40,low:10},
@@ -253,189 +277,292 @@ const SEED_PRODUCTS=[
 const SEED_WAITERS=[{id:'w1',name:'Kofi'},{id:'w2',name:'Ama'}];
 
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&d.products)return d;}catch(e){}
-  return {products:SEED_PRODUCTS.slice(),waiters:SEED_WAITERS.slice(),tickets:[],credit:[],sales:[],smsLog:[]};}
+  const def={role:null,deviceId:uid(),products:SEED_PRODUCTS.slice(),waiters:SEED_WAITERS.slice(),credit:[],ledger:[],settings:{bossPin:'0000',venue:'FieldBar',waiterId:null}};
+  return def;}
 function save(){localStorage.setItem(KEY,JSON.stringify(DB));}
+function uid(){return Math.random().toString(36).slice(2,10)+Date.now().toString(36);}
 function todayStr(){return new Date().toISOString().slice(0,10);}
 function money(n){return 'GHS '+(+n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});}
-function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),1800);}
+function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),1800);}
 function $(s){return document.querySelector(s);}
+function $all(s){return Array.from(document.querySelectorAll(s));}
 let DB=load();
-let activeTicket=null;
+let activeRole=null;
+let pendingPinResolve=null;
 
-/* ---------- views ---------- */
-function switchView(v){document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));$('#v-'+v).classList.add('on');document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on',t.dataset.v===v));if(v==='floor')renderFloor();if(v==='menu')renderMenu();if(v==='credit')renderCredit();if(v==='waiter')renderWaiter();}
+/* ---------- launch / roles ---------- */
+function pickRole(r){
+  if(r==='boss'){openPin(()=>enterRole('boss'));return;}
+  enterRole(r);
+}
+function enterRole(r){
+  activeRole=r;
+  document.getElementById('launch').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  $all('.roleview').forEach(x=>x.classList.add('hidden'));
+  document.getElementById('role-'+r).classList.remove('hidden');
+  const meta={counter:['🔵 Counter','#0EA5E9','#04141f'],waiter:['🟢 Waiter','#22c55e','#052e16'],boss:['🟣 Boss','#a855f7','#fff']};
+  const [label,bg,fg]=meta[r];
+  const chip=document.getElementById('roleChip');chip.textContent=label;chip.style.background=bg;chip.style.color=fg;
+  document.getElementById('appTitle').textContent=(DB.settings.venue||'FieldBar')+' POS';
+  // tab accents
+  $all('#role-'+r+' .tab').forEach(t=>t.style.setProperty('--on',bg));
+  if(r==='counter'){switchC('cwalk');renderCounterToday();}
+  if(r==='waiter'){switchW('wnew');renderWaiterToday();}
+  if(r==='boss'){switchB('bdash');renderBoss();}
+  updateSync();
+}
+function goLaunch(){document.getElementById('app').classList.add('hidden');document.getElementById('launch').classList.remove('hidden');activeRole=null;}
 
-/* ---------- floor / tickets ---------- */
-function renderFloor(){
-  const f=$('#fFloor').value;
-  let t=DB.tickets.filter(x=>!f||x.status===f).sort((a,b)=>a.created-b.created);
-  if(!t.length){$('#floorList').innerHTML='<p class="muted">No tickets. Tap “+ New Ticket”.</p>';return;}
-  $('#floorList').innerHTML=t.map(x=>{
-    const total=x.items.reduce((s,i)=>s+i.qty*i.price,0);
-    const itemLines=x.items.map(i=>`<div class="line"><span class="q">${i.qty}×</span><span>${i.name}</span><span>${money(i.qty*i.price)}</span></div>`).join('');
-    return `<div class="ticket">
-      <div class="top"><span class="tt">${x.table||'Walk-in'}</span><span class="pill ${x.status}">${x.status}</span></div>
-      <div class="waiter">Waiter: ${waiterName(x.waiterId)} ${x.customer?'· '+x.customer:''}</div>
-      ${itemLines}
-      <div style="text-align:right;font-weight:800;margin-top:6px">${money(total)}</div>
-      <div class="row" style="margin-top:6px">
-        <button class="btn sm" onclick="openOrder('${x.id}')">Open / Add</button>
-        ${x.status!=='paid'?`<button class="btn ghost sm" onclick="markServed('${x.id}')">Mark Served</button>`:''}
-      </div>
+/* ---------- PIN ---------- */
+function openPin(resolve){pendingPinResolve=resolve;openModal('pinModal');['p1','p2','p3','p4'].forEach((id,i)=>{const e=document.getElementById(id);e.value='';});document.getElementById('p1').focus();
+  ['p1','p2','p3','p4'].forEach((id,i)=>{const e=document.getElementById(id);e.oninput=()=>{if(e.value&&i<3)document.getElementById('p'+(i+2)).focus();};});}
+function checkPin(){const code=['p1','p2','p3','p4'].map(id=>document.getElementById(id).value).join('');if(code===DB.settings.bossPin){closeModal('pinModal');const f=pendingPinResolve;pendingPinResolve=null;if(f)f();}else{toast('Wrong PIN');}}
+
+/* ---------- modal helpers ---------- */
+function openModal(id){document.getElementById(id).classList.add('on');}
+function closeModal(id){document.getElementById(id).classList.remove('on');}
+
+/* ---------- sync / offline banner ---------- */
+function updateSync(){
+  const b=document.getElementById('syncBanner');
+  if(SYNC_CONFIG.enabled && navigator.onLine){
+    b.className='banner ok';b.textContent='🟢 CLOUD SYNC ON — multi-device live';b.classList.remove('hidden');
+  }else if(!navigator.onLine){
+    b.className='banner off';b.textContent='🔴 OFFLINE — all data on this device. Staff should use the Counter device for shared work.';b.classList.remove('hidden');
+  }else{
+    b.className='banner warn';b.textContent='🟡 LOCAL MODE — works fully offline. Add cloud sync in Settings for live multi-device.';b.classList.remove('hidden');
+  }
+}
+window.addEventListener('online',updateSync);
+window.addEventListener('offline',updateSync);
+
+/* ---------- CURRENT WAITER ID (for waiter role) ---------- */
+function currentWaiterId(){
+  if(DB.settings.waiterId)return DB.settings.waiterId;
+  if(DB.waiters.length){DB.settings.waiterId=DB.waiters[0].id;save();return DB.settings.waiterId;}
+  return null;
+}
+function currentWaiterName(){const id=currentWaiterId();const w=DB.waiters.find(x=>x.id===id);return w?w.name:'Waiter';}
+
+/* ---------- COUNTER ---------- */
+function switchC(v){$all('#role-counter .tab').forEach(t=>t.classList.toggle('on',t.dataset.cv===v));$all('#role-counter .view').forEach(x=>x.classList.remove('on'));document.getElementById('cv-'+v).classList.add('on');
+  if(v==='cpending')renderPending();if(v==='cstock')renderStock();}
+function renderCounterToday(){
+  const today=DB.ledger.filter(e=>e.role==='counter'&&e.ts.startsWith(todayStr())&&e.status==='paid');
+  const t=today.reduce((s,e)=>s+e.amount,0);
+  document.getElementById('counterToday').innerHTML=`<div class="kpi"><div class="n">${money(t)}</div><div class="l">Counter sales today</div></div>`;
+}
+function openCounterSale(){openModal('csaleModal');document.getElementById('csItems').innerHTML='';csAddRow();csTotal();}
+function csAddRow(){const sel=DB.products.map(p=>`<option value="${p.id}">${p.name} (${money(p.price)})</option>`).join('');const d=document.createElement('div');d.className='row';d.innerHTML=`<select class="ci" style="flex:2">${sel}</select><input type="number" min="1" value="1" class="cq" style="max-width:80px" oninput="csTotal()">`;document.getElementById('csItems').appendChild(d);d.querySelector('.ci').onchange=csTotal;}
+function csTotal(){let t=0;$all('#csItems .row').forEach(r=>{const p=DB.products.find(x=>x.id===r.querySelector('.ci').value);const q=+r.querySelector('.cq').value||0;if(p)t+=p.price*q;});document.getElementById('csTotal').textContent=money(t);}
+function counterSale(payment){
+  const items=$all('#csItems .row').map(r=>{const p=DB.products.find(x=>x.id===r.querySelector('.ci').value);const q=+r.querySelector('.cq').value||0;return {id:p.id,name:p.name,price:p.price,qty:q};}).filter(i=>i.qty>0);
+  if(!items.length){toast('Add at least one item');return;}
+  const amount=items.reduce((s,i)=>s+i.qty*i.price,0);
+  const entry={id:uid(),ts:new Date().toISOString(),type:'sale',role:'counter',table:document.getElementById('csTable').value||'Walk-in',items,payment,amount,status:'paid',waiterId:null,synced:false};
+  DB.ledger.push(entry);
+  items.forEach(i=>{const p=DB.products.find(x=>x.id===i.id);if(p)p.stock=Math.max(0,(p.stock||0)-i.qty);});
+  save();closeModal('csaleModal');syncPush(entry);toast('Sale recorded');renderCounterToday();
+}
+function renderPending(){
+  const list=DB.ledger.filter(e=>e.role==='waiter'&&e.status==='sent');
+  const el=document.getElementById('pendingList');
+  if(!list.length){el.innerHTML='<p class="muted">No pending waiter orders.</p>';return;}
+  el.innerHTML=list.map(e=>{
+    const lines=e.items.map(i=>`<div class="line"><span class="q">${i.qty}×</span><span>${i.name}</span><span>${money(i.qty*i.price)}</span></div>`).join('');
+    const w=DB.waiters.find(x=>x.id===e.waiterId);
+    return `<div class="ticket" style="border-left-color:var(--waiter)">
+      <div class="top"><span class="tt">${e.table||'Table'}</span><span class="pill sent">SENT</span></div>
+      <div class="waiter">Waiter: ${w?w.name:e.waiterId||'?'}</div>${lines}
+      <div style="text-align:right;font-weight:800;margin-top:6px">${money(e.amount)} · ${e.payment}</div>
+      <button class="btn green sm" style="margin-top:8px" onclick="fulfill('${e.id}')">✓ Fulfill (stock out)</button>
     </div>`;
   }).join('');
 }
-function waiterName(id){const w=DB.waiters.find(x=>x.id===id);return w?w.name:'—';}
-function openNewTicket(){$('#tTable').value='';$('#tCust').value='';fillWaiter('#tWaiter');openModal('ticketModal');}
-function fillWaiter(sel){$(sel).innerHTML='<option value="">—</option>'+DB.waiters.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');}
-function createTicket(){
-  const table=$('#tTable').value.trim()||'Walk-in';
-  DB.tickets.push({id:'t'+Date.now(),table,customer:$('#tCust').value.trim(),waiterId:$('#tWaiter').value||null,items:[],status:'open',created:Date.now(),paidVia:null});
-  save();closeModal('ticketModal');switchView('floor');toast('Ticket opened');
+function fulfill(id){
+  const e=DB.ledger.find(x=>x.id===id);if(!e)return;
+  e.items.forEach(i=>{const p=DB.products.find(x=>x.id===i.id);if(p)p.stock=Math.max(0,(p.stock||0)-i.qty);});
+  e.status='fulfilled';save();syncPush(e);toast('Fulfilled — stock updated');renderPending();renderStock();
 }
-function markServed(id){const t=DB.tickets.find(x=>x.id===id);if(t){t.status='served';save();renderFloor();toast('Marked served');}}
+function renderStock(){
+  const el=document.getElementById('stockList');
+  el.innerHTML='<div class="row"><button class="btn" onclick="openModal(\'prodModal\')">+ Add Item</button></div>'+DB.products.map(p=>{
+    const low=(p.stock||0)<=(p.low||5);
+    return `<div class="ticket ${low?'':''}" style="border-left-color:${low?'var(--warn)':'var(--counter)'}">
+      <div class="top"><span class="tt">${p.name}</span><span class="pill ${low?'pending':'paid'}">${p.stock} left</span></div>
+      <div class="waiter">${p.cat} · ${money(p.price)} ${low?'· ⚠ LOW':''}</div>
+      <div class="row" style="margin-top:8px"><input type="number" value="${p.stock}" style="max-width:110px" id="stk-${p.id}"><button class="btn sm" onclick="adjStock('${p.id}')">Set</button></div>
+    </div>`;
+  }).join('');
+}
+function adjStock(id){const v=+document.getElementById('stk-'+id).value||0;const p=DB.products.find(x=>x.id===id);if(p){p.stock=v;save();toast('Stock updated');renderStock();}}
 
-function openOrder(id){
-  activeTicket=DB.tickets.find(x=>x.id===id);if(!activeTicket)return;
-  $('#orderTitle').textContent=activeTicket.table+' · '+waiterName(activeTicket.waiterId);
-  renderOrder();
-  $('#oProduct').innerHTML='<option value="">Product…</option>'+DB.products.map(p=>`<option value="${p.id}">${p.name} — ${money(p.price)} (stock ${p.stock})</option>`).join('');
-  openModal('orderModal');
+/* ---------- WAITER ---------- */
+function switchW(v){$all('#role-waiter .tab').forEach(t=>t.classList.toggle('on',t.dataset.wv===v));$all('#role-waiter .view').forEach(x=>x.classList.remove('on'));document.getElementById('wv-'+v).classList.add('on');
+  if(v==='wmine')renderWaiterOrders();if(v==='wexp')renderExport();}
+function renderWaiterToday(){
+  const id=currentWaiterId();
+  const today=DB.ledger.filter(e=>e.role==='waiter'&&e.waiterId===id&&e.ts.startsWith(todayStr()));
+  const t=today.reduce((s,e)=>s+e.amount,0);
+  document.getElementById('waiterToday').innerHTML=`<div class="kpi"><div class="n">${money(t)}</div><div class="l">${currentWaiterName()} — collected today</div></div>`;
 }
-function renderOrder(){
-  const t=activeTicket;
-  $('#orderItems').innerHTML=t.items.length?t.items.map(i=>`<div class="line"><span class="q">${i.qty}×</span><span>${i.name}</span><span>${money(i.qty*i.price)} <button class="btn ghost sm" onclick="delItem('${i.id}')">x</button></span></div>`).join('') : '<p class="muted">No items yet.</p>';
-  const total=t.items.reduce((s,i)=>s+i.qty*i.price,0);
-  $('#orderTotal').textContent='Total: '+money(total);
+function openWaiterOrder(){if(!DB.waiters.length){toast('Ask Boss to add waiters first');return;}openModal('worderModal');document.getElementById('woItems').innerHTML='';woAddRow();woTotal();}
+function woAddRow(){const sel=DB.products.map(p=>`<option value="${p.id}">${p.name} (${money(p.price)})</option>`).join('');const d=document.createElement('div');d.className='row';d.innerHTML=`<select class="wi" style="flex:2">${sel}</select><input type="number" min="1" value="1" class="wq" style="max-width:80px" oninput="woTotal()">`;document.getElementById('woItems').appendChild(d);d.querySelector('.wi').onchange=woTotal;}
+function woTotal(){let t=0;$all('#woItems .row').forEach(r=>{const p=DB.products.find(x=>x.id===r.querySelector('.wi').value);const q=+r.querySelector('.wq').value||0;if(p)t+=p.price*q;});document.getElementById('woTotal').textContent=money(t);}
+function waiterSale(payment){
+  const id=currentWaiterId();if(!id){toast('No waiter set');return;}
+  const items=$all('#woItems .row').map(r=>{const p=DB.products.find(x=>x.id===r.querySelector('.wi').value);const q=+r.querySelector('.wq').value||0;return {id:p.id,name:p.name,price:p.price,qty:q};}).filter(i=>i.qty>0);
+  if(!items.length){toast('Add at least one item');return;}
+  const amount=items.reduce((s,i)=>s+i.qty*i.price,0);
+  const entry={id:uid(),ts:new Date().toISOString(),type:'sale',role:'waiter',waiterId:id,table:document.getElementById('woTable').value||'Table',items,payment,amount,status:'sent',synced:false};
+  DB.ledger.push(entry);save();closeModal('worderModal');syncPush(entry);toast('Order sent to counter');renderWaiterToday();renderWaiterOrders();renderExport();
 }
-function delItem(iid){activeTicket.items=activeTicket.items.filter(i=>i.id!==iid);save();renderOrder();}
-function addToTicket(){
-  const pid=$('#oProduct').value, q=Math.max(1,+$('#oQty').value||1);
-  const p=DB.products.find(x=>x.id===pid);if(!p){toast('Pick a product');return;}
-  const existing=activeTicket.items.find(i=>i.productId===pid);
-  if(existing)existing.qty+=q; else activeTicket.items.push({id:'i'+Date.now(),productId:pid,name:p.name,price:p.price,qty:q});
-  // decrement stock
-  p.stock=Math.max(0,(p.stock||0)-q);
-  save();renderOrder();toast(p.name+' added');
+function renderWaiterOrders(){
+  const id=currentWaiterId();
+  const list=DB.ledger.filter(e=>e.role==='waiter'&&e.waiterId===id).sort((a,b)=>b.ts.localeCompare(a.ts));
+  const el=document.getElementById('waiterOrders');
+  if(!list.length){el.innerHTML='<p class="muted">No orders yet.</p>';return;}
+  el.innerHTML=list.map(e=>{
+    const lines=e.items.map(i=>`<div class="line"><span class="q">${i.qty}×</span><span>${i.name}</span><span>${money(i.qty*i.price)}</span></div>`).join('');
+    return `<div class="ticket" style="border-left-color:var(--waiter)">
+      <div class="top"><span class="tt">${e.table||'Table'}</span><span class="pill ${e.status}">${e.status.toUpperCase()}</span></div>
+      ${lines}<div style="text-align:right;font-weight:800;margin-top:6px">${money(e.amount)} · ${e.payment}</div></div>`;
+  }).join('');
 }
-function payTicket(mode){
-  const t=activeTicket;const total=t.items.reduce((s,i)=>s+i.qty*i.price,0);
-  if(!t.items.length){toast('Add items first');return;}
-  t.status='paid';t.paidVia=mode;t.paidAt=Date.now();
-  DB.sales.push({id:'s'+Date.now(),ticketId:t.id,table:t.table,waiterId:t.waiterId,customer:t.customer,items:t.items.slice(),total,mode,date:todayStr()});
-  // credit: attach to customer account
-  if(mode==='credit'){
-    let c=DB.credit.find(x=>x.name&&t.customer&&x.name.toLowerCase()===t.customer.toLowerCase());
-    if(!c&&t.customer){c={id:'c'+Date.now(),name:t.customer,phone:'',limit:0,balance:0};DB.credit.push(c);}
-    if(c)c.balance=(+c.balance||0)+total;
-    if(c&&c.phone)queueSMS(c.phone,`Hi ${c.name}, your FieldBar bill is ${money(total)}. Thank you!`);
-  }
-  save();closeModal('orderModal');switchView('floor');toast('Paid via '+mode);
+function renderExport(){
+  const id=currentWaiterId();
+  const list=DB.ledger.filter(e=>e.role==='waiter'&&e.waiterId===id&&e.status==='sent');
+  const el=document.getElementById('exportList');
+  if(!list.length){el.innerHTML='<p class="muted">No orders waiting to send.</p>';return;}
+  el.innerHTML=list.map(e=>`<div class="ticket" style="border-left-color:var(--waiter)">
+    <div class="top"><span class="tt">${e.table||'Table'}</span><span class="pill sent">${money(e.amount)}</span></div>
+    <button class="btn sm" style="margin-top:8px" onclick="exportOrder('${e.id}')">📤 Export file for Counter</button></div>`).join('');
+}
+function exportOrder(id){
+  const e=DB.ledger.find(x=>x.id===id);if(!e)return;
+  const blob=new Blob([JSON.stringify(e,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='fieldbar-order-'+id+'.json';a.click();toast('Exported — send to Counter');
+}
+function importWaiterOrder(){document.getElementById('waiterFile').click();}
+function handleWaiterFile(ev){
+  const f=ev.target.files[0];if(!f)return;
+  const r=new FileReader();r.onload=()=>{try{const e=JSON.parse(r.result);
+    if(!e.items||!e.amount){toast('Invalid file');return;}
+    e.status='sent';e.imported=true;DB.ledger.push(e);save();toast('Order imported — fulfill it');switchC('cpending');renderPending();
+  }catch(err){toast('Could not read file');}};r.readAsText(f);ev.target.value='';
 }
 
-/* ---------- menu / stock ---------- */
-function renderMenu(){
-  const q=$('#mSearch').value.toLowerCase();
-  const items=DB.products.filter(p=>(p.name+' '+p.cat).toLowerCase().includes(q));
-  $('#menuGrid').innerHTML=items.map(p=>{
-    const low=(p.stock!=null&&p.low!=null&&p.stock<=p.low);
-    return `<div class="pcard ${low?'low':''}" onclick="openProductEditor('${p.id}')">
-      <div class="nm">${p.name}</div><div class="pr">${money(p.price)}</div>
-      <div class="st">${p.cat||''} · stock ${p.stock??'—'}</div></div>`;
-  }).join('')||'<p class="muted">No items.</p>';
+/* ---------- BOSS ---------- */
+function switchB(v){$all('#role-boss .tab').forEach(t=>t.classList.toggle('on',t.dataset.bv===v));$all('#role-boss .view').forEach(x=>x.classList.remove('on'));document.getElementById('bv-'+v).classList.add('on');
+  if(v==='bdash')renderBoss();if(v==='bmenu')renderBossMenu();if(v==='bstaff')renderBossStaff();if(v==='bset')renderBossSet();if(v==='bnight')renderNight();}
+function todaySales(){return DB.ledger.filter(e=>e.ts.startsWith(todayStr())&&(e.status==='paid'||e.status==='fulfilled'||e.status==='sent'));}
+function renderBoss(){
+  const s=todaySales();
+  const tot=s.reduce((a,e)=>a+e.amount,0);
+  const cash=s.filter(e=>e.payment==='cash').reduce((a,e)=>a+e.amount,0);
+  const momo=s.filter(e=>e.payment==='momo').reduce((a,e)=>a+e.amount,0);
+  const cred=s.filter(e=>e.payment==='credit').reduce((a,e)=>a+e.amount,0);
+  const counter=s.filter(e=>e.role==='counter').reduce((a,e)=>a+e.amount,0);
+  const waiter=s.filter(e=>e.role==='waiter').reduce((a,e)=>a+e.amount,0);
+  const low=DB.products.filter(p=>(p.stock||0)<=(p.low||5)).length;
+  // per waiter
+  const byW={};s.filter(e=>e.role==='waiter').forEach(e=>{byW[e.waiterId]=(byW[e.waiterId]||0)+e.amount;});
+  const wRows=Object.keys(byW).map(id=>{const w=DB.waiters.find(x=>x.id===id);return `<div class="line"><span>${w?w.name:id}</span><span>${money(byW[id])}</span></div>`;}).join('')||'<p class="muted small">No waiter sales yet.</p>';
+  document.getElementById('bossDash').innerHTML=`
+    <div class="grid cards" style="grid-template-columns:repeat(auto-fill,minmax(120px,1fr))">
+      <div class="kpi"><div class="n">${money(tot)}</div><div class="l">Total today</div></div>
+      <div class="kpi"><div class="n">${money(cash)}</div><div class="l">Cash</div></div>
+      <div class="kpi"><div class="n">${money(momo)}</div><div class="l">MoMo</div></div>
+      <div class="kpi"><div class="n">${money(cred)}</div><div class="l">Credit</div></div>
+      <div class="kpi"><div class="n">${money(counter)}</div><div class="l">Counter sales</div></div>
+      <div class="kpi"><div class="n">${money(waiter)}</div><div class="l">Waiter sales</div></div>
+      <div class="kpi"><div class="n">${low}</div><div class="l">Low-stock items</div></div>
+    </div>
+    <h3 style="margin-top:16px">Per Waiter (today)</h3>${wRows}
+    <h3 style="margin-top:16px">Low Stock</h3>${DB.products.filter(p=>(p.stock||0)<=(p.low||5)).map(p=>`<div class="line"><span>${p.name}</span><span class="pill pending">${p.stock} left</span></div>`).join('')||'<p class="muted small">All good.</p>'}`;
 }
+function renderNight(){
+  const s=todaySales();
+  const tot=s.reduce((a,e)=>a+e.amount,0);
+  const cash=s.filter(e=>e.payment==='cash').reduce((a,e)=>a+e.amount,0);
+  const momo=s.filter(e=>e.payment==='momo').reduce((a,e)=>a+e.amount,0);
+  const cred=s.filter(e=>e.payment==='credit').reduce((a,e)=>a+e.amount,0);
+  const txt=`FIELD BAR — NIGHT SUMMARY (${todayStr()})
+Total: ${money(tot)}
+Cash: ${money(cash)}
+MoMo: ${money(momo)}
+Credit: ${money(cred)}
+Orders: ${s.length}
+Low stock: ${DB.products.filter(p=>(p.stock||0)<=(p.low||5)).map(p=>p.name+'('+p.stock+')').join(', ')||'none'}`;
+  document.getElementById('nightBox').innerHTML=`<pre style="white-space:pre-wrap;font-size:13px;line-height:1.5;background:var(--ink);padding:12px;border-radius:10px">${txt}</pre>
+    <div class="row"><button class="btn ghost" onclick="navigator.clipboard.writeText(this.previousElementSibling.previousElementSibling.textContent);toast('Copied')">Copy</button>
+    <button class="btn ghost" onclick="exportBackup()">Export Backup</button></div>`;
+}
+function renderBossMenu(){
+  document.getElementById('bossMenu').innerHTML='<div class="row"><button class="btn" onclick="openModal(\'prodModal\')">+ Add Item</button></div>'+DB.products.map(p=>`<div class="ticket">
+    <div class="top"><span class="tt">${p.name}</span><span class="pill ${ (p.stock||0)<=(p.low||5)?'pending':'paid'}">${p.stock} left</span></div>
+    <div class="waiter" style="color:var(--muted);font-size:12px">${p.cat} · ${money(p.price)}</div>
+    <div class="row" style="margin-top:6px"><button class="btn sm ghost" onclick="editProduct('${p.id}')">Edit</button><input type="number" value="${p.stock}" style="max-width:100px" id="bs-${p.id}"><button class="btn sm" onclick="bossStock('${p.id}')">Set</button></div>
+  </div>`).join('');
+}
+function bossStock(id){const v=+document.getElementById('bs-'+id).value||0;const p=DB.products.find(x=>x.id===id);if(p){p.stock=v;save();toast('Stock set');renderBossMenu();}}
 let editPid=null;
-function openProductEditor(id){editPid=id||null;$('#prodTitle').textContent=id?'Edit Item':'Add Menu Item';
-  const p=id?DB.products.find(x=>x.id===id):null;
-  $('#pName').value=p?p.name:'';$('#pCat').value=p?p.cat:'';$('#pPrice').value=p?p.price:'';
-  $('#pStock').value=p?(p.stock??''):'';$('#pLow').value=p?(p.low??''):'';
-  openModal('prodModal');}
+function editProduct(id){const p=DB.products.find(x=>x.id===id);editPid=id;document.getElementById('prodTitle').textContent='Edit Item';document.getElementById('pName').value=p.name;document.getElementById('pCat').value=p.cat;document.getElementById('pPrice').value=p.price;document.getElementById('pStock').value=p.stock;document.getElementById('pLow').value=p.low||'';openModal('prodModal');}
 function saveProduct(){
-  const name=$('#pName').value.trim();if(!name){toast('Name required');return;}
-  const data={name,cat:$('#pCat').value.trim(),price:+$('#pPrice').value||0,stock:+$('#pStock').value||0,low:+$('#pLow').value||5};
-  if(editPid){Object.assign(DB.products.find(x=>x.id===editPid),data);}else{data.id='p'+Date.now();DB.products.push(data);}
-  save();closeModal('prodModal');renderMenu();toast('Saved');
+  const name=document.getElementById('pName').value.trim();const price=+document.getElementById('pPrice').value;
+  if(!name||!price){toast('Name & price required');return;}
+  if(editPid){const p=DB.products.find(x=>x.id===editPid);p.name=name;p.cat=document.getElementById('pCat').value;p.price=price;p.stock=+document.getElementById('pStock').value||0;p.low=+document.getElementById('pLow').value||5;editPid=null;}
+  else{DB.products.push({id:uid(),name,cat:document.getElementById('pCat').value,price,stock:+document.getElementById('pStock').value||0,low:+document.getElementById('pLow').value||5});}
+  save();closeModal('prodModal');toast('Saved');if(activeRole==='boss')renderBossMenu();if(activeRole==='counter')renderStock();
+}
+function renderBossStaff(){
+  const waitRows=DB.waiters.map(w=>`<div class="ticket"><div class="tt">${w.name}</div></div>`).join('')||'<p class="muted small">No waiters.</p>';
+  const credRows=DB.credit.map(c=>`<div class="ticket"><div class="tt">${c.name}</div><div class="waiter" style="color:var(--muted);font-size:12px">${c.phone||''} · limit ${c.limit?money(c.limit):'—'}</div></div>`).join('')||'<p class="muted small">No credit customers.</p>';
+  document.getElementById('bossStaff').innerHTML=`<div class="row"><button class="btn" onclick="openModal(\'waitModal\')">+ Add Waiter</button><button class="btn ghost" onclick="openModal(\'credModal\')">+ Credit Customer</button></div>
+    <h3>Waiters</h3>${waitRows}<h3>Credit Customers</h3>${credRows}`;
+}
+function renderBossSet(){
+  document.getElementById('bossSet').innerHTML=`
+    <div class="kpi" style="margin-bottom:10px"><div class="l">Venue name</div><input id="setVenue" value="${DB.settings.venue||''}" style="margin-top:6px"></div>
+    <div class="kpi" style="margin-bottom:10px"><div class="l">Boss PIN (4 digits)</div><input id="setPin" maxlength="4" inputmode="numeric" value="${DB.settings.bossPin||'0000'}" style="margin-top:6px;max-width:140px"></div>
+    <div class="kpi" style="margin-bottom:10px"><div class="l">This waiter's ID (for Waiter role)</div><select id="setWaiter" style="margin-top:6px">${DB.waiters.map(w=>`<option value="${w.id}" ${DB.settings.waiterId===w.id?'selected':''}>${w.name}</option>`).join('')}</select></div>
+    <div class="kpi" style="margin-bottom:10px"><div class="l">Cloud sync (optional)</div>
+      <label class="small muted">Enable live multi-device sync (paste Supabase URL + anon key)</label>
+      <input id="setUrl" placeholder="https://xxxx.supabase.co" value="${SYNC_CONFIG.url}">
+      <input id="setAnon" placeholder="anon public key" value="${SYNC_CONFIG.anon}">
+      <label style="font-size:13px"><input type="checkbox" id="setSync" ${SYNC_CONFIG.enabled?'checked':''} style="width:auto;margin-right:6px">Enable cloud sync</label>
+    </div>
+    <button class="btn purple" onclick="saveSettings()">Save Settings</button>`;
+}
+function saveSettings(){
+  DB.settings.venue=document.getElementById('setVenue').value.trim()||'FieldBar';
+  const pin=document.getElementById('setPin').value.trim();if(/^\d{4}$/.test(pin))DB.settings.bossPin=pin;
+  DB.settings.waiterId=document.getElementById('setWaiter').value;
+  SYNC_CONFIG.enabled=document.getElementById('setSync').checked;
+  SYNC_CONFIG.url=document.getElementById('setUrl').value.trim();
+  SYNC_CONFIG.anon=document.getElementById('setAnon').value.trim();
+  save();toast('Settings saved');updateSync();
+  document.getElementById('appTitle').textContent=DB.settings.venue+' POS';
 }
 
-/* ---------- credit ---------- */
-function renderCredit(){
-  if(!DB.credit.length){$('#creditList').innerHTML='<p class="muted">No credit customers yet.</p>';return;}
-  $('#creditList').innerHTML=DB.credit.map(c=>`<div class="ticket">
-    <div class="top"><span class="tt">${c.name}</span><span class="pill ${+c.balance>0?'open':'paid'}">${money(c.balance||0)}</span></div>
-    <div class="waiter">${c.phone||'no phone'} ${c.limit?('· limit '+money(c.limit)):''}</div>
-    <div class="row" style="margin-top:6px">
-      <button class="btn sm" onclick="payCredit('${c.id}')">Record Payment</button>
-    </div></div>`).join('');
-}
-function openCreditEditor(){$('#cName').value='';$('#cPhone').value='';$('#cLimit').value='';openModal('credModal');}
-function saveCredit(){const name=$('#cName').value.trim();if(!name){toast('Name required');return;}
-  DB.credit.push({id:'c'+Date.now(),name,phone:$('#cPhone').value.trim(),limit:+$('#cLimit').value||0,balance:0});save();closeModal('credModal');renderCredit();toast('Customer added');}
-function payCredit(id){const c=DB.credit.find(x=>x.id===id);if(!c)return;const amt=prompt('Payment amount (GHS) for '+c.name);if(amt==null)return;c.balance=Math.max(0,(+c.balance||0)-(+amt||0));save();renderCredit();toast('Payment recorded');}
+/* ---------- boss add ops ---------- */
+function saveWaiter(){const n=document.getElementById('wName').value.trim();if(!n){toast('Name required');return;}DB.waiters.push({id:uid(),name:n});save();closeModal('waitModal');toast('Waiter added');renderBossStaff();}
+function saveCredit(){const n=document.getElementById('cName').value.trim();if(!n){toast('Name required');return;}DB.credit.push({id:uid(),name:n,phone:document.getElementById('cPhone').value.trim(),limit:+document.getElementById('cLimit').value||null});save();closeModal('credModal');toast('Customer added');renderBossStaff();}
 
-/* ---------- waiters ---------- */
-function renderWaiter(){
-  if(!DB.waiters.length){$('#waiterStats').innerHTML='<p class="muted">No waiters added.</p>';return;}
-  const today=todayStr();
-  const rows=DB.waiters.map(w=>{
-    const sales=DB.sales.filter(s=>s.waiterId===w.id&&s.date===today);
-    const sum=sales.reduce((a,s)=>a+s.total,0);
-    return {w,count:sales.length,sum};
-  }).sort((a,b)=>b.sum-a.sum);
-  $('#waiterStats').innerHTML='<table><tr><th>Waiter</th><th>Tickets today</th><th>Sales</th></tr>'+
-    rows.map(r=>`<tr><td>${r.w.name}</td><td>${r.count}</td><td>${money(r.sum)}</td></tr>`).join('')+'</table>';
-}
-function openWaiterEditor(){$('#wName').value='';openModal('waitModal');}
-function saveWaiter(){const n=$('#wName').value.trim();if(!n){toast('Name required');return;}DB.waiters.push({id:'w'+Date.now(),name:n});save();closeModal('waitModal');renderWaiter();toast('Waiter added');}
-
-/* ---------- owner / summary ---------- */
-function showOwner(){
-  const today=todayStr();const s=DB.sales.filter(x=>x.date===today);
-  const cash=s.filter(x=>x.mode==='cash').reduce((a,x)=>a+x.total,0);
-  const momo=s.filter(x=>x.mode==='momo').reduce((a,x)=>a+x.total,0);
-  const tab=s.filter(x=>x.mode==='credit').reduce((a,x)=>a+x.total,0);
-  const low=DB.products.filter(p=>p.stock!=null&&p.low!=null&&p.stock<=p.low);
-  $('#oSales').textContent=money(s.reduce((a,x)=>a+x.total,0));
-  $('#oCash').textContent=money(cash);$('#oMomo').textContent=money(momo);$('#oTab').textContent=money(tab);
-  $('#oTix').textContent=s.length;$('#oLow').textContent=low.length;
-  const ranked=DB.waiters.map(w=>{const ws=DB.sales.filter(x=>x.waiterId===w.id&&x.date===today);return{w,n:ws.length,sum:ws.reduce((a,x)=>a+x.total,0)};}).sort((a,b)=>b.sum-a.sum);
-  $('#ownerWaiters').innerHTML=ranked.length?'<table><tr><th>Waiter</th><th>Sales</th></tr>'+ranked.map(r=>`<tr><td>${r.w.name}</td><td>${money(r.sum)}</td></tr>`).join('')+'</table>':'<p class="muted">No sales yet.</p>';
-  openModal('ownerModal');
-}
-function nightSummaryText(){
-  const today=todayStr();const s=DB.sales.filter(x=>x.date===today);
-  const cash=s.filter(x=>x.mode==='cash').reduce((a,x)=>a+x.total,0);
-  const momo=s.filter(x=>x.mode==='momo').reduce((a,x)=>a+x.total,0);
-  const tab=s.filter(x=>x.mode==='credit').reduce((a,x)=>a+x.total,0);
-  const low=DB.products.filter(p=>p.stock!=null&&p.low!=null&&p.stock<=p.low).map(p=>p.name+' ('+p.stock+')');
-  let txt=`FIELD BAR — NIGHT SUMMARY (${today})\n`;
-  txt+=`Total sales: ${money(s.reduce((a,x)=>a+x.total,0))}\n`;
-  txt+=`Cash: ${money(cash)} | MoMo: ${money(momo)} | Tab/Credit: ${money(tab)}\n`;
-  txt+=`Tickets: ${s.length}\n`;
-  const ranked=DB.waiters.map(w=>{const ws=DB.sales.filter(x=>x.waiterId===w.id&&x.date===today);return{w,sum:ws.reduce((a,x)=>a+x.total,0)};}).sort((a,b)=>b.sum-a.sum);
-  txt+='Top waiters: '+(ranked.length?ranked.map(r=>r.w.name+' '+money(r.sum)).join(', '):'—')+'\n';
-  txt+='Low stock: '+(low.length?low.join(', '):'none')+'\n';
-  return txt;
-}
-function openNightSummary(){$('#nightText').textContent=nightSummaryText();openModal('nightModal');}
-function sendNightSMS(){if(!SMS_CONFIG.enabled||!SMS_CONFIG.ownerPhone){toast('SMS not configured (offline-safe)');return;}
-  queueSMS(SMS_CONFIG.ownerPhone,nightSummaryText());toast('Night summary queued to owner');}
-
-/* ---------- SMS (gateway-ready, graceful offline) ---------- */
-function queueSMS(phone,msg){
-  DB.smsLog.push({phone,msg,at:Date.now(),sent:false});save();
-  // Real send would POST to SMS_CONFIG.gateway (Hubtel/Arkesel). Stubbed so app works fully offline.
-  console.log('[SMS stub]',phone,msg);
+/* ---------- backup / sync ---------- */
+function exportBackup(){const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='fieldbar-backup-'+todayStr()+'.json';a.click();toast('Backup exported');}
+function syncPush(entry){
+  if(!SYNC_CONFIG.enabled||!SYNC_CONFIG.url)return;
+  fetch(SYNC_CONFIG.url+'/rest/v1/ledger',{method:'POST',headers:{'apikey':SYNC_CONFIG.anon,'Authorization':'Bearer '+SYNC_CONFIG.anon,'Content-Type':'application/json','Prefer':'return=minimal'},body:JSON.stringify(entry)}).then(()=>{entry.synced=true;save();}).catch(()=>{});
 }
 
-/* ---------- export ---------- */
-function exportData(){const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='fieldbar_backup_'+todayStr()+'.json';a.click();toast('Backup exported');}
+/* boot: restore last role (not boss, needs pin) */
+if(DB.role && DB.role!=='boss'){/* could auto-enter; keep manual for clarity */}
+updateSync();
 
-/* ---------- modal helpers ---------- */
-function openModal(id){$('#'+id).classList.add('on');}
-function closeModal(id){$('#'+id).classList.remove('on');}
-
-/* ---------- boot ---------- */
-renderFloor();
+/* service worker (offline install) */
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}
 </script>
 </body>
 </html>

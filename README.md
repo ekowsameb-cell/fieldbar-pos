@@ -1,32 +1,42 @@
-# FieldBar POS
+# FieldBar POS v2
 
-Offline-first **bar & nightclub POS** — tabs, waiters, customer credit, SMS bills. No printer, no server.
+Offline-first bar POS for Ghanaian businesses (bars, nightclubs, lounges).
+Built for three distinct roles on the same PWA:
 
-Built on the FieldSales Pro offline engine. All data stays on the device (localStorage). Works with zero internet.
+- 🔵 **Counter** — walk-in sales (own float), fulfills waiter orders, owns stock.
+- 🟢 **Waiter** — takes table orders, collects money, sends to counter.
+- 🟣 **Boss** — dashboard, close-night summary, menu/stock/staff management (PIN-locked).
 
-## Features (v1)
-- **Menu & stock** — items with price + stock; low-stock alert.
-- **Floor / tickets** — open a ticket per table/tab, add items, mark **Served** when collected at the counter.
-- **Waiters** — tag each ticket with a waiter; see **per-waiter sales** (top seller) on the owner dashboard.
-- **Payment** — Cash / MoMo / **Credit (tab)** per ticket.
-- **Customer credit** — running balances for regulars; record payments.
-- **Owner dashboard** — today's sales, cash vs MoMo vs tab, ticket count, low-stock, top waiters.
-- **Close Night** — summary (sales split, top waiters, low-stock list) → SMS to owner (gateway-ready, offline-safe).
-- **Backup/export** — JSON export.
-- **Installable PWA** — add to home screen; opens full-screen, offline.
+## How it works
 
-## How to use (pilot)
-1. Open the live link in the bar's counter tablet (and any waiter phone).
-2. **Add to Home Screen** (Share → Add to Home Screen).
-3. Owner sets up menu + waiters once. Staff open tickets per table.
+- **No internet needed.** All data is stored on the device (localStorage).
+- **Bad internet?** Staff converge on the **Counter device**, which is the single
+  source of truth. Waiter→Counter handoff works via **Export file → Import on Counter**
+  (tap "Send to Counter" → export JSON → boss/counter imports → tap Fulfill).
+- **Good internet? (optional)** Enable Cloud Sync in Boss → Settings by pasting a
+  Supabase URL + anon key. Then waiter orders push live and the counter fulfills them
+  in real time.
 
-## SMS (optional)
-SMS is stubbed (`queueSMS` in `index.html`) so the app runs fully offline. To enable real SMS (Hubtel/Arkesel Ghana):
-- Set `SMS_CONFIG.enabled = true`, `SMS_CONFIG.gateway`, `SMS_CONFIG.ownerPhone`.
-- Implement the POST to the gateway inside `queueSMS`.
+## Install (Android / Chrome)
 
-## Deploy
-Static site — push to any static host (GitHub Pages used for the pilot). No backend required.
+1. Open the GitHub Pages URL in Chrome.
+2. ⋮ menu → "Install app" / "Add to Home screen".
+3. Choose your role on launch.
 
----
-*Spec: marketing/FieldBar_POS_Spec.md. Status: MVP v1 (2026-08-13).*
+## Roles at a glance
+
+| Role    | Records sales | Owns stock | Takes money | PIN? |
+|---------|---------------|-----------|------------|------|
+| Counter | Yes (walk-in) | Yes       | Yes        | No   |
+| Waiter  | Yes (tables)  | No        | Yes        | No   |
+| Boss    | View only     | Manages   | No         | Yes  |
+
+## Data & backup
+
+- Tap **Boss → Close Night → Export Backup** to download a JSON snapshot.
+- No account, no server required. Your data stays on your device.
+
+## Files
+
+- `index.html` — the whole app (3 roles, offline ledger)
+- `manifest.json`, `sw.js`, icons — PWA install/offline support
