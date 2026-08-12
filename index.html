@@ -260,6 +260,16 @@
 
 <div class="toast" id="toast"></div>
 
+<!-- BILL OVERLAY (customer-facing) -->
+<div class="modal" id="billOverlay">
+  <div class="sheet" style="max-width:460px;background:var(--ink)">
+    <div id="billBody"></div>
+    <div class="row" style="justify-content:center;margin-top:14px">
+      <button class="btn ghost" onclick="document.getElementById('billOverlay').classList.remove('on')">Close</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ===== FieldBar POS v2 — offline-first, 3-role =======
    Roles: counter (walk-in + fulfill), waiter (order + collect), boss (dashboard).
@@ -427,8 +437,42 @@ function renderWaiterOrders(){
     const lines=e.items.map(i=>`<div class="line"><span class="q">${i.qty}×</span><span>${i.name}</span><span>${money(i.qty*i.price)}</span></div>`).join('');
     return `<div class="ticket" style="border-left-color:var(--waiter)">
       <div class="top"><span class="tt">${e.table||'Table'}</span><span class="pill ${e.status}">${e.status.toUpperCase()}</span></div>
-      ${lines}<div style="text-align:right;font-weight:800;margin-top:6px">${money(e.amount)} · ${e.payment}</div></div>`;
+      ${lines}<div style="text-align:right;font-weight:800;margin-top:6px">${money(e.amount)} · ${e.payment}</div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn sm green" onclick="showBill('${e.id}')">🧾 Show Bill</button>
+        <button class="btn sm ghost" onclick="shareBill('${e.id}')">📤 WhatsApp</button>
+        <button class="btn sm ghost" onclick="window.print()">🖨 Print</button>
+      </div>
+    </div>`;
   }).join('');
+}
+function billHTML(e){
+  const w=DB.waiters.find(x=>x.id===e.waiterId);
+  const lines=e.items.map(i=>`<div class="line"><span class="q">${i.qty}×</span><span>${i.name}</span><span>${money(i.qty*i.price)}</span></div>`).join('');
+  const time=new Date(e.ts).toLocaleString();
+  return `<div style="max-width:420px;margin:0 auto;text-align:center">
+    <h2 style="margin:4px 0">${(DB.settings.venue||'FieldBar').toUpperCase()}</h2>
+    <p class="muted small" style="margin:0 0 10px">${time}</p>
+    <div style="text-align:left">${lines}</div>
+    <hr style="border:0;border-top:1px solid var(--line);margin:10px 0">
+    <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:800"><span>TOTAL</span><span>${money(e.amount)}</span></div>
+    <p class="muted small" style="margin-top:8px">Table: ${e.table||'—'} · Paid via ${e.payment.toUpperCase()} · ${w?w.name:'Waiter'}</p>
+    <p class="muted small">Thank you! 🍸</p>
+  </div>`;
+}
+function showBill(id){
+  const e=DB.ledger.find(x=>x.id===id);if(!e)return;
+  const ov=document.getElementById('billOverlay');
+  ov.querySelector('#billBody').innerHTML=billHTML(e);
+  ov.classList.add('on');
+}
+function shareBill(id){
+  const e=DB.ledger.find(x=>x.id===id);if(!e)return;
+  const w=DB.waiters.find(x=>x.id===e.waiterId);
+  const lines=e.items.map(i=>`${i.qty}× ${i.name} = ${money(i.qty*i.price)}`).join('\n');
+  const text=`*${DB.settings.venue||'FieldBar'}*\nTable: ${e.table||'—'} (${w?w.name:'Waiter'})\n${lines}\n*TOTAL: ${money(e.amount)}* (${e.payment.toUpperCase()})`;
+  const url='https://'+location.host+location.pathname;
+  window.open('https://wa.me/?text='+encodeURIComponent(text+'\n'+url),'_blank');
 }
 function renderExport(){
   const id=currentWaiterId();
