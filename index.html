@@ -399,7 +399,7 @@ function closeModal(id){document.getElementById(id).classList.remove('on');}
 /* ---------- sync / offline banner ---------- */
 function updateSync(){
   const b=document.getElementById('syncBanner');
-  if(DB.settings.cloud && DB.settings.cloud.enabled && navigator.onLine){
+  if((!DB.settings.cloud || DB.settings.cloud.enabled) && navigator.onLine){
     b.className='banner ok';b.textContent='🟢 CLOUD SYNC ON — devices live';b.classList.remove('hidden');
   }else if(!navigator.onLine){
     b.className='banner off';b.textContent='🔴 OFFLINE — all data on this device. Staff should use the Counter device for shared work.';b.classList.remove('hidden');
@@ -671,7 +671,7 @@ function renderBossSet(){
     <div class="kpi" style="margin-bottom:10px"><div class="l">Counter PIN (4 digits)</div><input id="setCounterPin" maxlength="4" inputmode="numeric" value="${DB.settings.counterPin||'0000'}" style="margin-top:6px;max-width:140px"></div>
     <div class="kpi" style="margin-bottom:10px"><div class="l">This waiter's ID (for Waiter role)</div><select id="setWaiter" style="margin-top:6px">${DB.waiters.map(w=>`<option value="${w.id}" ${DB.settings.waiterId===w.id?'selected':''}>${w.name}</option>`).join('')}</select></div>
     <div class="kpi" style="margin-bottom:10px"><div class="l">Cloud Sync</div>
-      <label style="font-size:14px;display:flex;align-items:center;gap:8px;margin-top:6px"><input type="checkbox" id="setSync" ${DB.settings.cloud&&DB.settings.cloud.enabled?'checked':''} style="width:auto"> Enable live multi-device sync</label>
+      <label style="font-size:14px;display:flex;align-items:center;gap:8px;margin-top:6px"><input type="checkbox" id="setSync" ${(!DB.settings.cloud||DB.settings.cloud.enabled)?'checked':''} style="width:auto"> Enable live multi-device sync</label>
       <p class="small muted" style="margin-top:6px">When on, waiter and counter devices share one live ledger (needs internet). Works fully offline otherwise — staff use the Counter device.</p>
       <button class="btn ghost" style="margin-top:8px" onclick="testSync()">🔧 Test Sync (diagnose)</button>
       <div class="small muted" style="margin-top:6px" id="syncDiag">${DB.settings.lastSync?('Last synced: '+new Date(DB.settings.lastSync).toLocaleTimeString()):'Never synced yet'}</div>
@@ -716,7 +716,7 @@ function startSync(){
 /* boot: restore last role (not boss, needs pin) */
 if(DB.role && DB.role!=='boss'){/* could auto-enter; keep manual for clarity */}
 updateSync();
-window.addEventListener('load',()=>{ if(DB.settings.cloud&&DB.settings.cloud.enabled&&syncInit()){startSync();} });
+window.addEventListener('load',()=>{ if((!DB.settings.cloud||DB.settings.cloud.enabled)&&syncInit()){startSync();} });
 
 /* service worker (offline install) */
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}
