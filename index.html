@@ -554,20 +554,27 @@ function adjStock(id){const v=+document.getElementById('stk-'+id).value||0;const
 function renderReportControls(){
   document.getElementById('repDate').value=todayStr();
   const sel=document.getElementById('repWaiter');
-  if(!DB.waiters.length){sel.innerHTML='<option value="">No waiters yet</option>';return;}
-  sel.innerHTML=DB.waiters.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
+  let opts='<option value="__counter__">🟠 Counter (walk-in)</option>';
+  if(DB.waiters.length) opts+=DB.waiters.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
+  else opts+='<option value="" disabled>— no waiters —</option>';
+  sel.innerHTML=opts;
 }
 function genWaiterReport(){
   const date=(document.getElementById('repDate').value||todayStr());
   const wid=document.getElementById('repWaiter').value;
-  if(!wid){toast('Select a waiter');return;}
-  const w=DB.waiters.find(x=>x.id===wid);const name=w?w.name:wid;
-  const list=DB.ledger.filter(e=>e.role==='waiter'&&e.waiterId===wid&&e.ts.startsWith(date)).sort((a,b)=>a.ts.localeCompare(b.ts));
+  if(!wid){toast('Select a staff member');return;}
+  const isCounter = wid==='__counter__';
+  const name = isCounter ? 'Counter (walk-in)' : ((DB.waiters.find(x=>x.id===wid)||{}).name||wid);
+  const list=(isCounter
+      ? DB.ledger.filter(e=>e.role==='counter'&&e.status==='paid'&&e.ts.startsWith(date))
+      : DB.ledger.filter(e=>e.role==='waiter'&&e.waiterId===wid&&e.ts.startsWith(date))
+    ).sort((a,b)=>a.ts.localeCompare(b.ts));
   const total=list.reduce((s,e)=>s+e.amount,0);
   const cash=list.filter(e=>e.payment==='cash').reduce((s,e)=>s+e.amount,0);
   const momo=list.filter(e=>e.payment==='momo').reduce((s,e)=>s+e.amount,0);
   const cred=list.filter(e=>e.payment==='credit').reduce((s,e)=>s+e.amount,0);
   const venue=DB.settings.venue||'Bamobi City Lounge';
+  const subtitle = isCounter ? 'Counter Walk-in Report' : 'Waiter Daily Report';
   const prettyDate=(function(){try{return new Date(date+'T00:00:00').toLocaleDateString(undefined,{weekday:'long',day:'2-digit',month:'long',year:'numeric'});}catch(e){return date;}})();
   const rows=list.length?list.map(e=>{
     const items=e.items.map(i=>i.qty+'× '+i.name).join(', ');
@@ -575,7 +582,7 @@ function genWaiterReport(){
   }).join('') : '<p class="muted small">No orders for this waiter on this date.</p>';
   document.getElementById('reportOut').innerHTML=`
     <div id="reportCard" class="report-card">
-      <div class="rhead"><img src="logo.png" alt="${venue}" style="width:64px;height:auto;border-radius:8px"><div><div style="font-weight:800;font-size:16px">${venue.toUpperCase()}</div><div class="muted small">Waiter Daily Report</div></div></div>
+      <div class="rhead"><img src="logo.png" alt="${venue}" style="width:64px;height:auto;border-radius:8px"><div><div style="font-weight:800;font-size:16px">${venue.toUpperCase()}</div><div class="muted small">${subtitle}</div></div></div>
       <div class="rmeta"><span>👤 ${name}</span><span>📅 ${prettyDate}</span></div>
       <div class="rkpis">
         <div><div class="n">${money(total)}</div><div class="l">Total collected</div></div>
@@ -595,20 +602,23 @@ function downloadReport(){
   if(!card){toast('Generate the report first');return;}
   const date=(document.getElementById('repDate').value||todayStr());
   const wid=document.getElementById('repWaiter').value;
-  const w=DB.waiters.find(x=>x.id===wid);const name=w?w.name:wid;
-  const list=DB.ledger.filter(e=>e.role==='waiter'&&e.waiterId===wid&&e.ts.startsWith(date));
+  const isCounter = wid==='__counter__';
+  const name = isCounter ? 'Counter (walk-in)' : ((DB.waiters.find(x=>x.id===wid)||{}).name||wid);
+  const list=(isCounter
+      ? DB.ledger.filter(e=>e.role==='counter'&&e.status==='paid'&&e.ts.startsWith(date))
+      : DB.ledger.filter(e=>e.role==='waiter'&&e.waiterId===wid&&e.ts.startsWith(date)));
   const total=list.reduce((s,e)=>s+e.amount,0);
   const cash=list.filter(e=>e.payment==='cash').reduce((s,e)=>s+e.amount,0);
   const momo=list.filter(e=>e.payment==='momo').reduce((s,e)=>s+e.amount,0);
   const cred=list.filter(e=>e.payment==='credit').reduce((s,e)=>s+e.amount,0);
   const venue=DB.settings.venue||'Bamobi City Lounge';
-  let txt=`${venue.toUpperCase()} — WAITER DAILY REPORT\n`;
-  txt+=`Waiter: ${name}\nDate: ${date}\n`;
+  let txt=`${venue.toUpperCase()} — ${isCounter?'COUNTER WALK-IN REPORT':'WAITER DAILY REPORT'}\n`;
+  txt+=`Staff: ${name}\nDate: ${date}\n`;
   txt+=`Total collected: ${money(total)}\nOrders: ${list.length}\n`;
   txt+=`Cash: ${money(cash)} | MoMo: ${money(momo)} | Credit: ${money(cred)}\n`;
   txt+=`----------------------------------------\n`;
   list.sort((a,b)=>a.ts.localeCompare(b.ts)).forEach(e=>{const items=e.items.map(i=>i.qty+'× '+i.name).join(', ');txt+=`${fmtDateTime(e.ts)} | ${e.table||'Table'} | ${money(e.amount)} (${e.payment.toUpperCase()})\n  ${items}\n`;});
-  const blob=new Blob([txt],{type:'text/plain'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`waiter-report-${name}-${date}.txt`;a.click();toast('Report downloaded');
+  const blob=new Blob([txt],{type:'text/plain'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`${isCounter?'counter-report':'waiter-report'}-${name}-${date}.txt`;a.click();toast('Report downloaded');
 }
 
 /* ---------- WAITER ---------- */
