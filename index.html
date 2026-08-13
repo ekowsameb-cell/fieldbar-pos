@@ -484,7 +484,7 @@ function renderPending(){
     const w=DB.waiters.find(x=>x.id===e.waiterId);
     return `<div class="ticket" style="border-left-color:var(--waiter)">
       <div class="top"><span class="tt">${e.table||'Table'}</span><span class="pill sent">SENT</span></div>
-      <div class="waiter">Waiter: ${w?w.name:e.waiterId||'?'}</div>${lines}
+      <div class="waiter">Waiter: ${e.waiterName||(w?w.name:e.waiterId||'?')}</div>${lines}
       <div style="text-align:right;font-weight:800;margin-top:6px">${money(e.amount)} · ${e.payment}</div>
       <button class="btn green sm" style="margin-top:8px" onclick="fulfill('${e.id}')">✓ Fulfill (stock out)</button>
     </div>`;
@@ -525,7 +525,7 @@ function waiterSale(payment){
   const items=$all('#woItems .row').map(r=>{const p=DB.products.find(x=>x.id===r.querySelector('.wi').value);const q=+r.querySelector('.wq').value||0;return {id:p.id,name:p.name,price:p.price,qty:q};}).filter(i=>i.qty>0);
   if(!items.length){toast('Add at least one item');return;}
   const amount=items.reduce((s,i)=>s+i.qty*i.price,0);
-  const entry={id:uid(),ts:new Date().toISOString(),type:'sale',role:'waiter',waiterId:id,table:document.getElementById('woTable').value||'Table',items,payment,amount,status:'sent',synced:false};
+  const entry={id:uid(),ts:new Date().toISOString(),type:'sale',role:'waiter',waiterId:id,waiterName:(DB.waiters.find(x=>x.id===id)||{}).name||currentWaiterName(),table:document.getElementById('woTable').value||'Table',items,payment,amount,status:'sent',synced:false};
   DB.ledger.push(entry);save();closeModal('worderModal');syncPush(entry);toast('Order sent to counter');renderWaiterToday();renderWaiterOrders();renderExport();
 }
 function renderWaiterOrders(){
@@ -558,7 +558,7 @@ function billHTML(e){
     <div style="text-align:left">${lines}</div>
     <hr style="border:0;border-top:1px solid var(--line);margin:10px 0">
     <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:800"><span>TOTAL</span><span>${money(e.amount)}</span></div>
-    <p class="muted small" style="margin-top:8px">Table: ${e.table||'—'} · Paid via ${e.payment.toUpperCase()} · ${w?w.name:'Waiter'}</p>
+    <p class="muted small" style="margin-top:8px">Table: ${e.table||'—'} · Paid via ${e.payment.toUpperCase()} · ${e.waiterName||(w?w.name:'Waiter')}</p>
     <p class="muted small">Thank you for visiting! 🍸</p>
     <p class="small" style="margin-top:4px;color:var(--waiter)">⚡ Powered by <b>Providers Consultancy</b></p>
   </div>`;
@@ -573,7 +573,7 @@ function shareBill(id){
   const e=DB.ledger.find(x=>x.id===id);if(!e)return;
   const w=DB.waiters.find(x=>x.id===e.waiterId);
   const lines=e.items.map(i=>`${i.qty}× ${i.name} = ${money(i.qty*i.price)}`).join('\n');
-  const text=`*${DB.settings.venue||'Bamobi City Lounge'}*\nTable: ${e.table||'—'} (${w?w.name:'Waiter'})\n${lines}\n*TOTAL: ${money(e.amount)}* (${e.payment.toUpperCase()})`;
+  const text=`*${DB.settings.venue||'Bamobi City Lounge'}*\nTable: ${e.table||'—'} (${e.waiterName||(w?w.name:'Waiter')})\n${lines}\n*TOTAL: ${money(e.amount)}* (${e.payment.toUpperCase()})`;
   const url='https://'+location.host+location.pathname;
   window.open('https://wa.me/?text='+encodeURIComponent(text+'\n'+url),'_blank');
 }
