@@ -24,7 +24,7 @@
   .hidden{display:none!important}
   header{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line);position:sticky;top:0;background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(8px);box-shadow:0 1px 0 var(--line),0 6px 18px rgba(0,0,0,.25);z-index:30}
   header h1{font-size:17px;margin:0;flex:1;letter-spacing:.2px}
-  .role-chip{font-size:12px;font-weight:700;padding:3px 10px;border-radius:999px}
+  .role-chip{font-size:12px;font-weight:700;padding:5px 12px;border-radius:999px;display:inline-flex;align-items:center;gap:6px;background:var(--panel2);color:var(--txt);border:1px solid var(--line)}
   .btn{background:var(--brand);color:#fff;border:0;border-radius:10px;padding:11px 16px;font-weight:700;font-size:14px;cursor:pointer;box-shadow:0 2px 8px rgba(225,29,42,.25);transition:filter .12s}
   .btn:active{filter:brightness(.92)}
   .btn.ghost{background:var(--panel2);color:var(--txt);box-shadow:none}
@@ -79,15 +79,17 @@
   th,td{text-align:left;padding:8px;border-bottom:1px solid var(--line)}
   th{color:var(--muted)}
   .addfoot{position:fixed;bottom:0;left:0;right:0;padding:12px 16px;background:var(--bg);border-top:1px solid var(--line);display:flex;gap:10px;z-index:40}
-  /* launch */
-  #launch{position:fixed;inset:0;background:linear-gradient(160deg,#0f172a,#15233b);display:flex;flex-direction:column;justify-content:center;padding:24px;z-index:90}
-  #launch h2{text-align:center;font-size:22px;margin:0 0 4px}
-  #launch p.sub{text-align:center;color:var(--muted);margin:0 0 24px}
-  .rolebtn{display:flex;flex-direction:column;gap:4px;padding:18px;border-radius:16px;font-size:18px;font-weight:800;margin-bottom:14px;cursor:pointer;border:0;color:#04141f}
-  .rolebtn small{font-weight:500;font-size:12px;opacity:.8}
-  .rolebtn.counter{background:var(--counter)}
-  .rolebtn.waiter{background:var(--waiter);color:#052e16}
-  .rolebtn.boss{background:var(--boss);color:#fff}
+  /* launch — professional dark, brand-tinted */
+  #launch{position:fixed;inset:0;background:radial-gradient(1200px 600px at 50% -10%, #1c2230 0%, var(--bg) 60%);display:flex;flex-direction:column;justify-content:center;padding:24px;z-index:90}
+  #launch h2{text-align:center;font-size:23px;margin:0 0 4px;letter-spacing:.3px}
+  #launch p.sub{text-align:center;color:var(--muted);margin:0 0 26px}
+  .rolebtn{display:flex;align-items:center;gap:14px;padding:16px 18px;border-radius:16px;font-size:18px;font-weight:800;margin-bottom:14px;cursor:pointer;border:1px solid var(--line);color:var(--txt);background:var(--panel);box-shadow:var(--shadow);text-align:left}
+  .rolebtn small{font-weight:500;font-size:12px;opacity:.7;display:block;margin-top:2px}
+  .rolebtn .ricon-sm{width:42px;height:42px;border-radius:12px;flex:0 0 auto;display:flex;align-items:center;justify-content:center}
+  .rolebtn .ricon-sm svg{width:24px;height:24px}
+  .rolebtn.counter{border-left:4px solid var(--counter)}
+  .rolebtn.waiter{border-left:4px solid var(--waiter)}
+  .rolebtn.boss{border-left:4px solid var(--boss)}
   .banner{position:sticky;top:56px;z-index:25;padding:6px 14px;font-size:12px;font-weight:700}
   .banner.off{background:#3a0d0d;color:#fecaca;border-bottom:1px solid #7f1d1d}
   .banner.warn{background:#3a2a00;color:#fde68a;border-bottom:1px solid #92740a}
@@ -154,11 +156,11 @@
   <img src="logo.png" alt="Bamobi City Lounge" style="width:130px;height:auto;display:block;margin:0 auto 6px;border-radius:12px">
   <h2>Bamobi City Lounge</h2>
   <p class="sub">Field POS — choose your role to start</p>
-  <button class="rolebtn counter" onclick="pickRole('counter')"><span class="ricon-sm counter" style="width:22px;height:22px;display:inline-flex;border-radius:7px">${ROLE_ICONS.counter}</span>🟠 Counter<small>Walk-in sales + fulfill waiter orders + own stock</small></button>
-  <button class="rolebtn waiter" onclick="pickRole('waiter')"><span class="ricon-sm waiter" style="width:22px;height:22px;display:inline-flex;border-radius:7px">${ROLE_ICONS.waiter}</span>🟡 Waiter<small>Take table orders, collect money, send to counter</small></button>
-  <button class="rolebtn boss" onclick="pickRole('boss')"><span class="ricon-sm boss" style="width:22px;height:22px;display:inline-flex;border-radius:7px">${ROLE_ICONS.boss}</span>🔴 Boss<small>Dashboard, close night, manage menu & staff</small></button>
+  <button class="rolebtn counter" onclick="pickRole('counter')"><span class="ricon-sm counter">${ROLE_ICONS.counter}</span><span>Counter<small>Walk-in sales + fulfill waiter orders + own stock</small></span></button>
+  <button class="rolebtn waiter" onclick="pickRole('waiter')"><span class="ricon-sm waiter">${ROLE_ICONS.waiter}</span><span>Waiter<small>Take table orders, collect money, send to counter</small></span></button>
+  <button class="rolebtn boss" onclick="pickRole('boss')"><span class="ricon-sm boss">${ROLE_ICONS.boss}</span><span>Boss<small>Dashboard, close night, manage menu & staff</small></span></button>
   <p class="small muted" style="text-align:center;margin-top:18px">Offline-first. Works without internet — all data stays on this device.<br>If internet drops, staff use the <b>Counter device</b> for everything.</p>
-  <p class="small" style="text-align:center;margin-top:10px;color:var(--waiter)">⚡ Powered by <b>Providers Consultancy</b></p>
+  <p class="small" style="text-align:center;margin-top:10px;color:var(--muted)">⚡ Powered by <b>Providers Consultancy</b></p>
 </div>
 
 <!-- APP -->
@@ -475,9 +477,9 @@ function enterRole(r){
   document.getElementById('app').classList.remove('hidden');
   $all('.roleview').forEach(x=>x.classList.add('hidden'));
   document.getElementById('role-'+r).classList.remove('hidden');
-  const meta={counter:['🟠 Counter','#0EA5E9','#04141f'],waiter:['🟡 Waiter','#22c55e','#052e16'],boss:['🔴 Boss','#a855f7','#fff']};
-  let label=meta[r][0], bg=meta[r][1], fg=meta[r][2];
-  if(r==='waiter'){const wn=currentWaiterName();if(wn&&wn!=='Waiter'){label='🟡 '+wn;}}
+  const meta={counter:['Counter','var(--counter)'],waiter:['Waiter','var(--waiter)'],boss:['Boss','var(--boss)']};
+  let label=meta[r][0];
+  if(r==='waiter'){const wn=currentWaiterName();if(wn&&wn!=='Waiter'){label=wn;}}
   const chip=document.getElementById('roleChip');chip.innerHTML='<span class="ricon-sm '+r+'">'+ROLE_ICONS[r]+'</span>'+label;
   document.getElementById('appTitle').textContent=(DB.settings.venue||'Bamobi City Lounge')+' POS';
   // tab accents
