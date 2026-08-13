@@ -418,7 +418,9 @@ function testSync(){
   if(!navigator.onLine){toast('Phone is offline — connect to internet first');setSyncStatus('🔴 OFFLINE — connect to internet, then Test Sync','off');sayDiag('Offline');return;}
   if(!syncInit()){toast('Firebase not configured');setSyncStatus('🔴 SYNC ERROR: Firebase not initialized (config missing?)','off');sayDiag('Firebase not initialized');return;}
   setSyncStatus('🟡 Testing sync… writing a probe doc','warn');sayDiag('Testing…');
-  const probe={_probe:true,ts:new Date().toISOString(),id:'__probe__'+Date.now()};
+  // Probe must match the Firestore rule's required shape (id, ts, status, role, items, amount)
+  const pid='__probe__'+Date.now();
+  const probe={_probe:true,id:pid,ts:new Date().toISOString(),status:'paid',role:'counter',amount:1,items:[]};
   firestoreDb.collection('ledger').doc(probe.id).set(probe).then(()=>{
     setSyncStatus('🟢 SYNC OK — Firebase writable (waiter→counter will work)','ok');
     sayDiag('Last sync: '+new Date().toLocaleTimeString());
