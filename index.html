@@ -662,7 +662,7 @@ function saveProduct(){
   if(!name||!price){toast('Name & price required');return;}
   if(editPid){const p=DB.products.find(x=>x.id===editPid);p.name=name;p.cat=document.getElementById('pCat').value;p.price=price;p.stock=+document.getElementById('pStock').value||0;p.low=+document.getElementById('pLow').value||5;editPid=null;}
   else{DB.products.push({id:uid(),name,cat:document.getElementById('pCat').value,price,stock:+document.getElementById('pStock').value||0,low:+document.getElementById('pLow').value||5});}
-  save();closeModal('prodModal');toast('Saved');if(activeRole==='boss')renderBossMenu();if(activeRole==='counter')renderStock();
+  save();closeModal('prodModal');toast('Saved');if(activeRole==='boss')renderBossMenu();if(activeRole==='counter')renderStock();if(activeRole==='boss')publishConfig();
 }
 function renderBossStaff(){
   const waitRows=DB.waiters.map(w=>`<div class="ticket"><div class="tt">${w.name}</div><div class="waiter small muted">PIN: ${w.pin||'0000'}</div><div class="row" style="margin-top:6px"><button class="btn sm ghost" onclick="resetWaiterPin('${w.id}')">Reset PIN</button></div></div>`).join('')||'<p class="muted small">No waiters.</p>';
@@ -670,7 +670,7 @@ function renderBossStaff(){
   document.getElementById('bossStaff').innerHTML=`<div class="row"><button class="btn" onclick="openModal(\'waitModal\')">+ Add Waiter</button><button class="btn ghost" onclick="openModal(\'credModal\')">+ Credit Customer</button></div>
     <h3>Waiters</h3>${waitRows}<h3>Credit Customers</h3>${credRows}`;
 }
-function resetWaiterPin(id){const w=DB.waiters.find(x=>x.id===id);if(w){w.pin='0000';save();toast('PIN reset to 0000');renderBossStaff();}}
+function resetWaiterPin(id){const w=DB.waiters.find(x=>x.id===id);if(w){w.pin='0000';save();toast('PIN reset to 0000');renderBossStaff();publishConfig();}}
 function renderBossSet(){
   document.getElementById('bossSet').innerHTML=`
     <div class="kpi" style="margin-bottom:10px"><div class="l">Venue name</div><input id="setVenue" value="${DB.settings.venue||''}" style="margin-top:6px"></div>
@@ -691,15 +691,77 @@ function saveSettings(){
   const cpin=document.getElementById('setCounterPin').value.trim();if(/^\d{4}$/.test(cpin))DB.settings.counterPin=cpin;
   DB.settings.waiterId=document.getElementById('setWaiter').value;
   const cloudOn=document.getElementById('setSync').checked;
-  if(cloudOn){ if(syncInit()){DB.settings.cloud={enabled:true};startSync();toast('Cloud Sync ON');} else {toast('Cloud Sync not configured — add Firebase config in code');} }
-  else {DB.settings.cloud={enabled:false};if(syncUnsub){syncUnsub();syncUnsub=null;}syncReady=false;toast('Cloud Sync OFF (local)');}
-  save();toast('Settings saved');updateSync();
+  if(cloudOn){ if(syncInit()){DB.settings.cloud={enabled:true};startSync();syncConfig();toast('Cloud Sync ON');} else {toast('Cloud Sync not configured — add Firebase config in code');} }
+  else {DB.settings.cloud={enabled:false};if(syncUnsub){syncUnsub();syncUnsub=null;}if(cfgUnsub){cfgUnsub();cfgUnsub=null;}syncReady=false;toast('Cloud Sync OFF (local)');}
+  save();publishConfig();toast('Settings saved');updateSync();
   document.getElementById('appTitle').textContent=DB.settings.venue+' POS';
 }
 
+/* ---------- CONFIG sync (menu/waiters/settings shared across devices) ----------
+   This is the fix for: "new staff added doesn't show on other devices."
+   Only the BOSS device publishes the catalog. Waiters/Counter subscribe and apply it.
+   Local operational stock adjustments are preserved (applyConfig keeps each product's
+   current local stock unless the product is brand new). */
+const CONFIG_DOC = 'shared';
+let cfgUnsub = null;
+function buildConfig(){
+  const d = DB.settings || {};
+  return {
+    owner: true,
+    venue: d.venue || 'Bamobi City Lounge',
+    bossPin: d.bossPin || '0000',
+    counterPin: d.counterPin || '0000',
+    waiterId: d.waiterId || null,
+    cloud: d.cloud || { enabled: true },
+    products: DB.products.map(p => ({ id: p.id, name: p.name, cat: p.cat, price: p.price, low: p.low || 5 })),
+    waiters: DB.waiters.map(w => ({ id: w.id, name: w.name, pin: w.pin || '0000' })),
+    credit: (DB.credit || []).map(c => ({ id: c.id, name: c.name, phone: c.phone || '', limit: c.limit || null })),
+  };
+}
+function publishConfig(){
+  if(!syncReady || !firestoreDb){ console.warn('publishConfig skipped: sync not ready'); return; }
+  try{
+    firestoreDb.collection('fieldbar-config').doc(CONFIG_DOC).set(buildConfig(), { merge: true })
+      .then(() => { DB.settings.lastConfig = new Date().toISOString(); save(); })
+      .catch(err => console.error('publishConfig failed:', err));
+  } catch(e){ console.error('publishConfig exception:', e); }
+}
+function applyConfig(c){
+  if(!c || !c.owner) return;
+  if(c.venue) DB.settings.venue = c.venue;
+  if(c.bossPin) DB.settings.bossPin = c.bossPin;
+  if(c.counterPin) DB.settings.counterPin = c.counterPin;
+  if(c.waiterId !== undefined) DB.settings.waiterId = c.waiterId;
+  if(c.cloud) DB.settings.cloud = c.cloud;
+  // waiters: replace list (PINs included) but keep any local-only extras absent remotely
+  if(Array.isArray(c.waiters)) DB.waiters = c.waiters.map(w => ({ id: w.id, name: w.name, pin: w.pin || '0000' }));
+  if(Array.isArray(c.credit)) DB.credit = c.credit.map(x => ({ id: x.id, name: x.name, phone: x.phone || '', limit: x.limit || null }));
+  // products: upsert by id, preserving this device's operational stock
+  if(Array.isArray(c.products)){
+    const byId = {}; DB.products.forEach(p => byId[p.id] = p);
+    DB.products = c.products.map(p => {
+      const local = byId[p.id];
+      return { id: p.id, name: p.name, cat: p.cat, price: p.price, low: p.low || 5,
+               stock: local ? (local.stock || 0) : (p.stock || 0) };
+    });
+  }
+  save();
+  // re-render whatever screen we're on
+  if(activeRole === 'boss'){ renderBoss(); }
+  if(activeRole === 'counter'){ renderStock(); }
+  if(activeRole === 'waiter'){ renderWaiterToday(); }
+}
+function syncConfig(){
+  if(!syncReady || !firestoreDb) return;
+  // initial pull
+  firestoreDb.collection('fieldbar-config').doc(CONFIG_DOC).get().then(snap => { if(snap.exists) applyConfig(snap.data()); }).catch(()=>{});
+  // live updates
+  cfgUnsub = firestoreDb.collection('fieldbar-config').doc(CONFIG_DOC).onSnapshot(snap => { if(snap.exists) applyConfig(snap.data()); }, () => {});
+}
+
 /* ---------- boss add ops ---------- */
-function saveWaiter(){const n=document.getElementById('wName').value.trim();if(!n){toast('Name required');return;}const pin=(Math.floor(1000+Math.random()*9000)).toString();DB.waiters.push({id:uid(),name:n,pin});save();closeModal('waitModal');toast('Waiter added - PIN '+pin);renderBossStaff();}
-function saveCredit(){const n=document.getElementById('cName').value.trim();if(!n){toast('Name required');return;}DB.credit.push({id:uid(),name:n,phone:document.getElementById('cPhone').value.trim(),limit:+document.getElementById('cLimit').value||null});save();closeModal('credModal');toast('Customer added');renderBossStaff();}
+function saveWaiter(){const n=document.getElementById('wName').value.trim();if(!n){toast('Name required');return;}const pin=(Math.floor(1000+Math.random()*9000)).toString();DB.waiters.push({id:uid(),name:n,pin});save();closeModal('waitModal');toast('Waiter added - PIN '+pin);renderBossStaff();publishConfig();}
+function saveCredit(){const n=document.getElementById('cName').value.trim();if(!n){toast('Name required');return;}DB.credit.push({id:uid(),name:n,phone:document.getElementById('cPhone').value.trim(),limit:+document.getElementById('cLimit').value||null});save();closeModal('credModal');toast('Customer added');renderBossStaff();publishConfig();}
 
 /* ---------- backup / sync ---------- */
 function exportBackup(){const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='fieldbar-backup-'+todayStr()+'.json';a.click();toast('Backup exported');}
@@ -723,7 +785,7 @@ function startSync(){
 /* boot: restore last role (not boss, needs pin) */
 if(DB.role && DB.role!=='boss'){/* could auto-enter; keep manual for clarity */}
 updateSync();
-window.addEventListener('load',()=>{ if((!DB.settings.cloud||DB.settings.cloud.enabled)&&syncInit()){startSync();} });
+window.addEventListener('load',()=>{ if((!DB.settings.cloud||DB.settings.cloud.enabled)&&syncInit()){startSync();syncConfig();} });
 
 /* service worker (offline install) */
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}
