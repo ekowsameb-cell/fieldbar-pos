@@ -95,6 +95,25 @@
   .lockbtn{position:fixed;right:14px;bottom:14px;z-index:40;border-radius:50%;width:54px;height:54px;font-size:22px;
     display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(0,0,0,.45);border:1px solid var(--line)}
   .lockbtn:active{transform:scale(.94)}
+
+  /* waiter daily report (counter supervisor) */
+  .report-card{background:var(--panel);border-radius:14px;padding:16px;margin-top:14px}
+  .report-card .rhead{display:flex;align-items:center;gap:12px}
+  .report-card .rmeta{display:flex;gap:16px;flex-wrap:wrap;margin:10px 0;font-weight:700;font-size:14px}
+  .report-card .rkpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px}
+  .report-card .rkpis>div{background:var(--ink);border-radius:10px;padding:10px}
+  .report-card .rkpis .n{font-size:18px;font-weight:800}
+  .report-card .rkpis .l{color:var(--muted);font-size:11px}
+  .report-card .rline{padding:8px 0;border-bottom:1px dashed var(--line);display:grid;grid-template-columns:1fr auto;gap:4px;font-size:14px}
+  @media print{
+    body *{visibility:hidden}
+    #reportCard,#reportCard *{visibility:visible}
+    #reportCard{position:absolute;left:0;top:0;width:100%;background:#fff!important;color:#000!important}
+    #reportCard .rkpis>div{background:#f3f3f3!important;color:#000!important}
+    #reportCard .rkpis .l{color:#555!important}
+    #reportCard .rline{border-color:#ccc!important}
+    #reportCard .muted{color:#555!important}
+  }
 </style>
 </head>
 <body>
@@ -129,6 +148,7 @@
       <div class="tab" data-cv="cpending" onclick="switchC('cpending')">Waiter Orders</div>
       <div class="tab" data-cv="cstock" onclick="switchC('cstock')">Stock</div>
       <div class="tab" data-cv="crecv" onclick="switchC('crecv')">Receive</div>
+      <div class="tab" data-cv="crep" onclick="switchC('crep')">📊 Reports</div>
     </div>
     <div class="view on" id="cv-cwalk">
       <div class="row"><button class="btn" onclick="openCounterSale()">+ New Walk-in Sale</button></div>
@@ -140,6 +160,25 @@
       <div class="row"><button class="btn" onclick="importWaiterOrder()">📥 Import Waiter Order (file)</button></div>
       <p class="small muted">Offline bridge: a waiter exports their order; you import it here and tap Fulfill so stock updates on this device.</p>
       <input type="file" id="waiterFile" accept="application/json,.json" class="hidden" onchange="handleWaiterFile(event)">
+    </div>
+    <div class="view" id="cv-crep">
+      <p class="small muted">Supervisor: generate a daily takings report for any waiter. Pick the date and waiter, then print or download.</p>
+      <div class="row">
+        <div style="flex:1">
+          <label class="small muted">Date</label>
+          <input type="date" id="repDate" style="width:100%">
+        </div>
+        <div style="flex:2">
+          <label class="small muted">Waiter</label>
+          <select id="repWaiter" style="width:100%"></select>
+        </div>
+      </div>
+      <div class="row">
+        <button class="btn" onclick="genWaiterReport()">📄 Generate Report</button>
+        <button class="btn ghost" onclick="printReport()">🖨 Print</button>
+        <button class="btn ghost" onclick="downloadReport()">⬇ Download</button>
+      </div>
+      <div id="reportOut"></div>
     </div>
   </div>
 
@@ -335,6 +374,8 @@ function save(){localStorage.setItem(KEY,JSON.stringify(DB));}
 function uid(){return Math.random().toString(36).slice(2,10)+Date.now().toString(36);}
 function todayStr(){return new Date().toISOString().slice(0,10);}
 function money(n){return 'GHS '+(+n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});}
+function fmtDateTime(ts){try{return new Date(ts).toLocaleString(undefined,{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}catch(e){return ts||'';}}
+function fmtDate(ts){try{return new Date(ts).toLocaleDateString(undefined,{day:'2-digit',month:'short',year:'numeric'});}catch(e){return '';}}
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),1800);}
 function $(s){return document.querySelector(s);}
 function $all(s){return Array.from(document.querySelectorAll(s));}
@@ -450,7 +491,7 @@ function currentWaiterName(){const id=currentWaiterId();const w=DB.waiters.find(
 
 /* ---------- COUNTER ---------- */
 function switchC(v){$all('#role-counter .tab').forEach(t=>t.classList.toggle('on',t.dataset.cv===v));$all('#role-counter .view').forEach(x=>x.classList.remove('on'));document.getElementById('cv-'+v).classList.add('on');
-  if(v==='cpending')renderPending();if(v==='cstock')renderStock();}
+  if(v==='cpending')renderPending();if(v==='cstock')renderStock();if(v==='crep')renderReportControls();}
 function renderCounterToday(){
   const today=DB.ledger.filter(e=>e.ts.startsWith(todayStr()));
   const counter=today.filter(e=>e.role==='counter'&&e.status==='paid').reduce((s,e)=>s+e.amount,0);
@@ -484,6 +525,7 @@ function renderPending(){
     const w=DB.waiters.find(x=>x.id===e.waiterId);
     return `<div class="ticket" style="border-left-color:var(--waiter)">
       <div class="top"><span class="tt">${e.table||'Table'}</span><span class="pill sent">SENT</span></div>
+      <div class="waiter small muted">🕒 ${fmtDateTime(e.ts)}</div>
       <div class="waiter">Waiter: ${e.waiterName||(w?w.name:e.waiterId||'?')}</div>${lines}
       <div style="text-align:right;font-weight:800;margin-top:6px">${money(e.amount)} · ${e.payment}</div>
       <button class="btn green sm" style="margin-top:8px" onclick="fulfill('${e.id}')">✓ Fulfill (stock out)</button>
@@ -507,6 +549,67 @@ function renderStock(){
   }).join('');
 }
 function adjStock(id){const v=+document.getElementById('stk-'+id).value||0;const p=DB.products.find(x=>x.id===id);if(p){p.stock=v;save();toast('Stock updated');renderStock();}}
+
+/* ---------- COUNTER REPORTS (supervisor) ---------- */
+function renderReportControls(){
+  document.getElementById('repDate').value=todayStr();
+  const sel=document.getElementById('repWaiter');
+  if(!DB.waiters.length){sel.innerHTML='<option value="">No waiters yet</option>';return;}
+  sel.innerHTML=DB.waiters.map(w=>`<option value="${w.id}">${w.name}</option>`).join('');
+}
+function genWaiterReport(){
+  const date=(document.getElementById('repDate').value||todayStr());
+  const wid=document.getElementById('repWaiter').value;
+  if(!wid){toast('Select a waiter');return;}
+  const w=DB.waiters.find(x=>x.id===wid);const name=w?w.name:wid;
+  const list=DB.ledger.filter(e=>e.role==='waiter'&&e.waiterId===wid&&e.ts.startsWith(date)).sort((a,b)=>a.ts.localeCompare(b.ts));
+  const total=list.reduce((s,e)=>s+e.amount,0);
+  const cash=list.filter(e=>e.payment==='cash').reduce((s,e)=>s+e.amount,0);
+  const momo=list.filter(e=>e.payment==='momo').reduce((s,e)=>s+e.amount,0);
+  const cred=list.filter(e=>e.payment==='credit').reduce((s,e)=>s+e.amount,0);
+  const venue=DB.settings.venue||'Bamobi City Lounge';
+  const prettyDate=(function(){try{return new Date(date+'T00:00:00').toLocaleDateString(undefined,{weekday:'long',day:'2-digit',month:'long',year:'numeric'});}catch(e){return date;}})();
+  const rows=list.length?list.map(e=>{
+    const items=e.items.map(i=>i.qty+'× '+i.name).join(', ');
+    return `<div class="rline"><div><b>${e.table||'Table'}</b> · ${fmtDateTime(e.ts)}</div><div>${money(e.amount)} · ${e.payment.toUpperCase()}</div><div class="muted small" style="grid-column:1/-1">${items}</div></div>`;
+  }).join('') : '<p class="muted small">No orders for this waiter on this date.</p>';
+  document.getElementById('reportOut').innerHTML=`
+    <div id="reportCard" class="report-card">
+      <div class="rhead"><img src="logo.png" alt="${venue}" style="width:64px;height:auto;border-radius:8px"><div><div style="font-weight:800;font-size:16px">${venue.toUpperCase()}</div><div class="muted small">Waiter Daily Report</div></div></div>
+      <div class="rmeta"><span>👤 ${name}</span><span>📅 ${prettyDate}</span></div>
+      <div class="rkpis">
+        <div><div class="n">${money(total)}</div><div class="l">Total collected</div></div>
+        <div><div class="n">${list.length}</div><div class="l">Orders</div></div>
+        <div><div class="n">${money(cash)}</div><div class="l">Cash</div></div>
+        <div><div class="n">${money(momo)}</div><div class="l">MoMo</div></div>
+        <div><div class="n">${money(cred)}</div><div class="l">Credit</div></div>
+      </div>
+      <h4 style="margin:14px 0 6px">Orders</h4>
+      ${rows}
+      <p class="muted small" style="margin-top:14px;text-align:center">Generated by ${venue} POS · ⚡ Powered by Providers Consultancy</p>
+    </div>`;
+}
+function printReport(){if(!document.getElementById('reportCard')){toast('Generate the report first');return;}window.print();}
+function downloadReport(){
+  const card=document.getElementById('reportCard');
+  if(!card){toast('Generate the report first');return;}
+  const date=(document.getElementById('repDate').value||todayStr());
+  const wid=document.getElementById('repWaiter').value;
+  const w=DB.waiters.find(x=>x.id===wid);const name=w?w.name:wid;
+  const list=DB.ledger.filter(e=>e.role==='waiter'&&e.waiterId===wid&&e.ts.startsWith(date));
+  const total=list.reduce((s,e)=>s+e.amount,0);
+  const cash=list.filter(e=>e.payment==='cash').reduce((s,e)=>s+e.amount,0);
+  const momo=list.filter(e=>e.payment==='momo').reduce((s,e)=>s+e.amount,0);
+  const cred=list.filter(e=>e.payment==='credit').reduce((s,e)=>s+e.amount,0);
+  const venue=DB.settings.venue||'Bamobi City Lounge';
+  let txt=`${venue.toUpperCase()} — WAITER DAILY REPORT\n`;
+  txt+=`Waiter: ${name}\nDate: ${date}\n`;
+  txt+=`Total collected: ${money(total)}\nOrders: ${list.length}\n`;
+  txt+=`Cash: ${money(cash)} | MoMo: ${money(momo)} | Credit: ${money(cred)}\n`;
+  txt+=`----------------------------------------\n`;
+  list.sort((a,b)=>a.ts.localeCompare(b.ts)).forEach(e=>{const items=e.items.map(i=>i.qty+'× '+i.name).join(', ');txt+=`${fmtDateTime(e.ts)} | ${e.table||'Table'} | ${money(e.amount)} (${e.payment.toUpperCase()})\n  ${items}\n`;});
+  const blob=new Blob([txt],{type:'text/plain'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`waiter-report-${name}-${date}.txt`;a.click();toast('Report downloaded');
+}
 
 /* ---------- WAITER ---------- */
 function switchW(v){$all('#role-waiter .tab').forEach(t=>t.classList.toggle('on',t.dataset.wv===v));$all('#role-waiter .view').forEach(x=>x.classList.remove('on'));document.getElementById('wv-'+v).classList.add('on');
@@ -537,6 +640,7 @@ function renderWaiterOrders(){
     const lines=e.items.map(i=>`<div class="line"><span class="q">${i.qty}×</span><span>${i.name}</span><span>${money(i.qty*i.price)}</span></div>`).join('');
     return `<div class="ticket" style="border-left-color:var(--waiter)">
       <div class="top"><span class="tt">${e.table||'Table'}</span><span class="pill ${e.status}">${e.status.toUpperCase()}</span></div>
+      <div class="waiter small muted">🕒 ${fmtDateTime(e.ts)}</div>
       ${lines}<div style="text-align:right;font-weight:800;margin-top:6px">${money(e.amount)} · ${e.payment}</div>
       <div class="row" style="margin-top:8px">
         <button class="btn sm green" onclick="showBill('${e.id}')">🧾 Show Bill</button>
@@ -618,6 +722,7 @@ function renderBoss(){
   const byW={};s.filter(e=>e.role==='waiter').forEach(e=>{byW[e.waiterId]=(byW[e.waiterId]||0)+e.amount;});
   const wRows=Object.keys(byW).map(id=>{const w=DB.waiters.find(x=>x.id===id);return `<div class="line"><span>${w?w.name:id}</span><span>${money(byW[id])}</span></div>`;}).join('')||'<p class="muted small">No waiter sales yet.</p>';
   document.getElementById('bossDash').innerHTML=`
+    <p class="muted small" style="margin-bottom:8px">📅 ${fmtDate(new Date().toISOString())}</p>
     <div class="grid cards" style="grid-template-columns:repeat(auto-fill,minmax(120px,1fr))">
       <div class="kpi"><div class="n">${money(tot)}</div><div class="l">Total today</div></div>
       <div class="kpi"><div class="n">${money(cash)}</div><div class="l">Cash</div></div>
