@@ -5,7 +5,9 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
 <title>Bamobi City Lounge POS</title>
 <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#7A1F2B">
+<meta name="theme-color" content="#C8102E">
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 <style>
   :root{
     --bg:#1c0a0e; --panel:#3a1218; --panel2:#4a161d; --line:#5a1e26;
@@ -281,8 +283,13 @@ const KEY='fieldbar_v2';
 /* Cloud sync: Firebase Firestore. Config is baked into code (public web-app keys are
 safe to ship). No key/URL is ever shown in the UI. Offline-first: sync is optional. */
 const FIREBASE_CONFIG={
-  // PASTE your Firebase web app config here (public, safe to ship):
-  // apiKey:'...', authDomain:'...', projectId:'...', storageBucket:'...', messagingSenderId:'...', appId:'...'
+  apiKey:"AIzaSyC1Giaa62Yiymj3QNFDJhqWKWoiLV94Klc",
+  authDomain:"fieldbar-pos.firebaseapp.com",
+  projectId:"fieldbar-pos",
+  storageBucket:"fieldbar-pos.firebasestorage.app",
+  messagingSenderId:"908337709634",
+  appId:"1:908337709634:web:2b1ade26b2b75a7a4923db",
+  measurementId:"G-X5XYS7V6KJ"
 };
 let firestoreDb=null, syncUnsub=null, syncReady=false;
 function syncInit(){
@@ -643,12 +650,11 @@ function startSync(){
 /* boot: restore last role (not boss, needs pin) */
 if(DB.role && DB.role!=='boss'){/* could auto-enter; keep manual for clarity */}
 updateSync();
-if(DB.settings.cloud&&DB.settings.cloud.enabled&&syncInit()){startSync();}
+window.addEventListener('load',()=>{ if(DB.settings.cloud&&DB.settings.cloud.enabled&&syncInit()){startSync();} });
 
 /* service worker (offline install) */
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));}
 </script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
+
 </body>
 </html>
