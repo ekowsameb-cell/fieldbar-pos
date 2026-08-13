@@ -105,7 +105,16 @@
   .report-card .rkpis .n{font-size:18px;font-weight:800}
   .report-card .rkpis .l{color:var(--muted);font-size:11px}
   .report-card .rline{padding:8px 0;border-bottom:1px dashed var(--line);display:grid;grid-template-columns:1fr auto;gap:4px;font-size:14px}
+  /* party vibe background (baked locally so it works offline) */
+  body.party-bg{background-image:linear-gradient(rgba(28,10,14,.72),rgba(20,7,8,.80)),url('bg-party.jpg');background-size:cover;background-position:center;background-attachment:fixed;background-color:var(--bg)}
+  body.party-bg .modal{background:rgba(2,6,23,.78)}
+  body.party-bg .sheet{background:rgba(58,18,24,.96)}
+  body.party-bg .ticket{background:rgba(58,18,24,.96)}
+  body.party-bg .kpi{background:rgba(58,18,24,.96)}
+  body.party-bg .pcard{background:rgba(58,18,24,.96)}
+  body.party-bg input,body.party-bg select,body.party-bg textarea{background:rgba(20,7,8,.92)}
   @media print{
+    body.party-bg,body.party-bg *{background-image:none!important;background:#fff!important;color:#000!important}
     body *{visibility:hidden}
     #reportCard,#reportCard *{visibility:visible}
     #reportCard{position:absolute;left:0;top:0;width:100%;background:#fff!important;color:#000!important}
