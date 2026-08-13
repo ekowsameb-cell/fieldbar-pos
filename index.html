@@ -162,7 +162,7 @@
       <input type="file" id="waiterFile" accept="application/json,.json" class="hidden" onchange="handleWaiterFile(event)">
     </div>
     <div class="view" id="cv-crep">
-      <p class="small muted">Supervisor: generate a daily takings report for any waiter. Pick the date and waiter, then print or download.</p>
+      <p class="small muted">Supervisor: generate a daily takings report for any staff member. Pick the business day and the person, then print or download.</p>
       <div class="row">
         <div style="flex:1">
           <label class="small muted">Date</label>
@@ -372,7 +372,15 @@ function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&d.produc
   return def;}
 function save(){localStorage.setItem(KEY,JSON.stringify(DB));}
 function uid(){return Math.random().toString(36).slice(2,10)+Date.now().toString(36);}
-function todayStr(){return new Date().toISOString().slice(0,10);}
+function todayStr(){return bizDayKey(new Date());}
+function bizDayKey(d){
+  if(!(d instanceof Date)) d=new Date(d);
+  const cut=(DB.settings&&DB.settings.dayStart!=null)?(+DB.settings.dayStart):5;
+  const k=new Date(d);
+  if(k.getHours()<cut) k.setDate(k.getDate()-1);
+  const y=k.getFullYear();const m=String(k.getMonth()+1).padStart(2,'0');const day=String(k.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
 function money(n){return 'GHS '+(+n).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2});}
 function fmtDateTime(ts){try{return new Date(ts).toLocaleString(undefined,{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'});}catch(e){return ts||'';}}
 function fmtDate(ts){try{return new Date(ts).toLocaleDateString(undefined,{day:'2-digit',month:'short',year:'numeric'});}catch(e){return '';}}
@@ -493,7 +501,7 @@ function currentWaiterName(){const id=currentWaiterId();const w=DB.waiters.find(
 function switchC(v){$all('#role-counter .tab').forEach(t=>t.classList.toggle('on',t.dataset.cv===v));$all('#role-counter .view').forEach(x=>x.classList.remove('on'));document.getElementById('cv-'+v).classList.add('on');
   if(v==='cpending')renderPending();if(v==='cstock')renderStock();if(v==='crep')renderReportControls();}
 function renderCounterToday(){
-  const today=DB.ledger.filter(e=>e.ts.startsWith(todayStr()));
+  const today=DB.ledger.filter(e=>bizDayKey(e.ts).startsWith(todayStr()));
   const counter=today.filter(e=>e.role==='counter'&&e.status==='paid').reduce((s,e)=>s+e.amount,0);
   const waiter=today.filter(e=>e.role==='waiter').reduce((s,e)=>s+e.amount,0);
   const total=counter+waiter;
@@ -566,8 +574,8 @@ function genWaiterReport(){
   const isCounter = wid==='__counter__';
   const name = isCounter ? 'Counter (walk-in)' : ((DB.waiters.find(x=>x.id===wid)||{}).name||wid);
   const list=(isCounter
-      ? DB.ledger.filter(e=>e.role==='counter'&&e.status==='paid'&&e.ts.startsWith(date))
-      : DB.ledger.filter(e=>e.role==='waiter'&&e.waiterId===wid&&e.ts.startsWith(date))
+      ? DB.ledger.filter(e=>e.role==='counter'&&e.status==='paid'&&bizDayKey(e.ts).startsWith(date))
+      : DB.ledger.filter(e=>e.role==='waiter'&&e.waiterId===wid&&bizDayKey(e.ts).startsWith(date))
     ).sort((a,b)=>a.ts.localeCompare(b.ts));
   const total=list.reduce((s,e)=>s+e.amount,0);
   const cash=list.filter(e=>e.payment==='cash').reduce((s,e)=>s+e.amount,0);
@@ -605,8 +613,8 @@ function downloadReport(){
   const isCounter = wid==='__counter__';
   const name = isCounter ? 'Counter (walk-in)' : ((DB.waiters.find(x=>x.id===wid)||{}).name||wid);
   const list=(isCounter
-      ? DB.ledger.filter(e=>e.role==='counter'&&e.status==='paid'&&e.ts.startsWith(date))
-      : DB.ledger.filter(e=>e.role==='waiter'&&e.waiterId===wid&&e.ts.startsWith(date)));
+      ? DB.ledger.filter(e=>e.role==='counter'&&e.status==='paid'&&bizDayKey(e.ts).startsWith(date))
+      : DB.ledger.filter(e=>e.role==='waiter'&&e.waiterId===wid&&bizDayKey(e.ts).startsWith(date)));
   const total=list.reduce((s,e)=>s+e.amount,0);
   const cash=list.filter(e=>e.payment==='cash').reduce((s,e)=>s+e.amount,0);
   const momo=list.filter(e=>e.payment==='momo').reduce((s,e)=>s+e.amount,0);
@@ -626,7 +634,7 @@ function switchW(v){$all('#role-waiter .tab').forEach(t=>t.classList.toggle('on'
   if(v==='wmine')renderWaiterOrders();if(v==='wexp')renderExport();}
 function renderWaiterToday(){
   const id=currentWaiterId();
-  const today=DB.ledger.filter(e=>e.role==='waiter'&&e.waiterId===id&&e.ts.startsWith(todayStr()));
+  const today=DB.ledger.filter(e=>e.role==='waiter'&&e.waiterId===id&&bizDayKey(e.ts).startsWith(todayStr()));
   const t=today.reduce((s,e)=>s+e.amount,0);
   document.getElementById('waiterToday').innerHTML=`<div class="kpi"><div class="n">${money(t)}</div><div class="l">${currentWaiterName()} — collected today</div></div>`;
 }
@@ -718,7 +726,7 @@ function handleWaiterFile(ev){
 /* ---------- BOSS ---------- */
 function switchB(v){$all('#role-boss .tab').forEach(t=>t.classList.toggle('on',t.dataset.bv===v));$all('#role-boss .view').forEach(x=>x.classList.remove('on'));document.getElementById('bv-'+v).classList.add('on');
   if(v==='bdash')renderBoss();if(v==='bmenu')renderBossMenu();if(v==='bstaff')renderBossStaff();if(v==='bset')renderBossSet();if(v==='bnight')renderNight();}
-function todaySales(){const seen=new Set();return DB.ledger.filter(e=>{if(seen.has(e.id))return false;if(!(e.status==='paid'||e.status==='fulfilled'||e.status==='sent'))return false;if(!e.ts.startsWith(todayStr()))return false;seen.add(e.id);return true;});}
+function todaySales(){const seen=new Set();return DB.ledger.filter(e=>{if(seen.has(e.id))return false;if(!(e.status==='paid'||e.status==='fulfilled'||e.status==='sent'))return false;if(!bizDayKey(e.ts).startsWith(todayStr()))return false;seen.add(e.id);return true;});}
 function renderBoss(){
   const s=todaySales();
   const tot=s.reduce((a,e)=>a+e.amount,0);
@@ -732,7 +740,7 @@ function renderBoss(){
   const byW={};s.filter(e=>e.role==='waiter').forEach(e=>{byW[e.waiterId]=(byW[e.waiterId]||0)+e.amount;});
   const wRows=Object.keys(byW).map(id=>{const w=DB.waiters.find(x=>x.id===id);return `<div class="line"><span>${w?w.name:id}</span><span>${money(byW[id])}</span></div>`;}).join('')||'<p class="muted small">No waiter sales yet.</p>';
   document.getElementById('bossDash').innerHTML=`
-    <p class="muted small" style="margin-bottom:8px">📅 ${fmtDate(new Date().toISOString())}</p>
+    <p class="muted small" style="margin-bottom:8px">📅 Business day ${bizDayKey(new Date())} <span class="small">(day starts ${DB.settings.dayStart!=null?DB.settings.dayStart:5}:00)</span></p>
     <div class="grid cards" style="grid-template-columns:repeat(auto-fill,minmax(120px,1fr))">
       <div class="kpi"><div class="n">${money(tot)}</div><div class="l">Total today</div></div>
       <div class="kpi"><div class="n">${money(cash)}</div><div class="l">Cash</div></div>
@@ -751,7 +759,7 @@ function renderNight(){
   const cash=s.filter(e=>e.payment==='cash').reduce((a,e)=>a+e.amount,0);
   const momo=s.filter(e=>e.payment==='momo').reduce((a,e)=>a+e.amount,0);
   const cred=s.filter(e=>e.payment==='credit').reduce((a,e)=>a+e.amount,0);
-  const txt=`FIELD BAR — NIGHT SUMMARY (${todayStr()})
+  const txt=`FIELD BAR — NIGHT SUMMARY (${bizDayKey(new Date())})
 Total: ${money(tot)}
 Cash: ${money(cash)}
 MoMo: ${money(momo)}
@@ -788,6 +796,7 @@ function renderBossStaff(){
 function resetWaiterPin(id){const w=DB.waiters.find(x=>x.id===id);if(w){w.pin='0000';save();toast('PIN reset to 0000');renderBossStaff();publishConfig();}}
 function renderBossSet(){
   document.getElementById('bossSet').innerHTML=`
+    <div class="kpi" style="margin-bottom:10px"><div class="l">Day starts at (hour 0-23) — night that bleeds past this hour counts to the previous day</div><input id="setDayStart" type="number" min="0" max="23" value="${(DB.settings.dayStart!=null?DB.settings.dayStart:5)}" style="margin-top:6px;max-width:140px"></div>
     <div class="kpi" style="margin-bottom:10px"><div class="l">Venue name</div><input id="setVenue" value="${DB.settings.venue||''}" style="margin-top:6px"></div>
     <div class="kpi" style="margin-bottom:10px"><div class="l">Boss PIN (4 digits)</div><input id="setPin" maxlength="4" inputmode="numeric" value="${DB.settings.bossPin||'0000'}" style="margin-top:6px;max-width:140px"></div>
     <div class="kpi" style="margin-bottom:10px"><div class="l">Counter PIN (4 digits)</div><input id="setCounterPin" maxlength="4" inputmode="numeric" value="${DB.settings.counterPin||'0000'}" style="margin-top:6px;max-width:140px"></div>
@@ -805,6 +814,8 @@ function saveSettings(){
   const pin=document.getElementById('setPin').value.trim();if(/^\d{4}$/.test(pin))DB.settings.bossPin=pin;
   const cpin=document.getElementById('setCounterPin').value.trim();if(/^\d{4}$/.test(cpin))DB.settings.counterPin=cpin;
   DB.settings.waiterId=document.getElementById('setWaiter').value;
+  const ds=document.getElementById('setDayStart').value;
+  if(/^\d{1,2}$/.test(ds)&&+ds>=0&&+ds<=23)DB.settings.dayStart=+ds;else DB.settings.dayStart=5;
   const cloudOn=document.getElementById('setSync').checked;
   if(cloudOn){ if(syncInit()){DB.settings.cloud={enabled:true};startSync();syncConfig();toast('Cloud Sync ON');} else {toast('Cloud Sync not configured — add Firebase config in code');} }
   else {DB.settings.cloud={enabled:false};if(syncUnsub){syncUnsub();syncUnsub=null;}if(cfgUnsub){cfgUnsub();cfgUnsub=null;}syncReady=false;toast('Cloud Sync OFF (local)');}
@@ -827,6 +838,7 @@ function buildConfig(){
     bossPin: d.bossPin || '0000',
     counterPin: d.counterPin || '0000',
     waiterId: d.waiterId || null,
+    dayStart: (d.dayStart!=null)?d.dayStart:5,
     cloud: d.cloud || { enabled: true },
     products: DB.products.map(p => ({ id: p.id, name: p.name, cat: p.cat, price: p.price, low: p.low || 5, stock: p.stock || 0 })),
     waiters: DB.waiters.map(w => ({ id: w.id, name: w.name, pin: w.pin || '0000' })),
@@ -846,6 +858,7 @@ function applyConfig(c){
   if(c.venue) DB.settings.venue = c.venue;
   if(c.bossPin) DB.settings.bossPin = c.bossPin;
   if(c.counterPin) DB.settings.counterPin = c.counterPin;
+  if(c.dayStart != null) DB.settings.dayStart = c.dayStart;
   if(c.waiterId !== undefined) DB.settings.waiterId = c.waiterId;
   if(c.cloud) DB.settings.cloud = c.cloud;
   // waiters: replace list (PINs included) but keep any local-only extras absent remotely
