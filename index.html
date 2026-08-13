@@ -18,6 +18,19 @@
     --brand:#E11D2A; --brand2:#b3121d;
     --shadow:0 8px 24px rgba(0,0,0,.38); --radius:14px;
   }
+  /* LIGHT THEME OVERRIDE (toggled via body.theme-light) — Square/Toast-style light POS */
+  body.theme-light{
+    --bg:#f3f5f8; --panel:#ffffff; --panel2:#eef1f5; --line:#e3e7ee;
+    --txt:#161a20; --muted:#6b7280; --ink:#ffffff;
+    --counter:#2563eb; --waiter:#059669; --boss:#7c3aed;
+    --shadow:0 8px 22px rgba(15,23,42,.10);
+  }
+  body.theme-light #launch{background:radial-gradient(1200px 600px at 50% -10%, #e9eef6 0%, var(--bg) 60%)}
+  body.theme-light .chart .bars{background:#eef1f5}
+  body.theme-light .report-card .rkpis>div{background:#f5f7fa}
+  body.theme-light .ticket{box-shadow:0 1px 3px rgba(15,23,42,.08)}
+  body.theme-light .pcard{box-shadow:0 1px 3px rgba(15,23,42,.08)}
+  body.theme-light .kpi{box-shadow:0 1px 3px rgba(15,23,42,.08)}
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
   html,body{margin:0;height:100%}
   body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--txt);font-size:15px;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
@@ -169,6 +182,7 @@
   <header>
     <h1 id="appTitle">Bamobi City Lounge</h1>
     <span class="role-chip" id="roleChip"></span>
+    <button class="btn ghost sm" onclick="toggleTheme()" title="Toggle dark / light">🌓</button>
     <button class="btn ghost sm" onclick="goLaunch()">Switch</button>
   </header>
 
@@ -419,7 +433,7 @@ const SEED_WAITERS=[{id:'w1',name:'Kofi',pin:'0000'},{id:'w2',name:'Ama',pin:'00
 const SEED_TABLES=[{name:'T1'},{name:'T2'},{name:'T3'},{name:'T4'},{name:'T5'},{name:'T6'},{name:'Bar1'},{name:'Bar2'}];
 
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&d.products)return d;}catch(e){}
-  const def={role:null,deviceId:uid(),products:SEED_PRODUCTS.slice(),waiters:SEED_WAITERS.slice(),tables:SEED_TABLES.slice(),credit:[],ledger:[],settings:{bossPin:'0000',counterPin:'0000',venue:'Bamobi City Lounge',waiterId:null}};
+  const def={role:null,deviceId:uid(),products:SEED_PRODUCTS.slice(),waiters:SEED_WAITERS.slice(),tables:SEED_TABLES.slice(),credit:[],ledger:[],settings:{bossPin:'0000',counterPin:'0000',venue:'Bamobi City Lounge',waiterId:null,theme:'dark'}};
   return def;}
 function save(){localStorage.setItem(KEY,JSON.stringify(DB));}
 /* ---------- ROLE ICONS (inline SVG, offline) ---------- */
@@ -444,7 +458,8 @@ function fmtDate(ts){try{return new Date(ts).toLocaleDateString(undefined,{day:'
 function toast(m){const t=document.getElementById('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),1800);}
 function $(s){return document.querySelector(s);}
 function $all(s){return Array.from(document.querySelectorAll(s));}
-let DB=load();
+function applyTheme(){document.body.classList.toggle('theme-light', (DB.settings&&DB.settings.theme)==='light');}
+applyTheme();
 let activeRole=null;
 let pendingPinResolve=null;
 let pendingPinCancel=null;
@@ -486,10 +501,12 @@ function enterRole(r){
   if(r==='counter'){switchC('cwalk');renderCounterToday();}
   if(r==='waiter'){switchW('wnew');renderWaiterToday();}
   if(r==='boss'){switchB('bdash');renderBoss();}
+  applyTheme();
   updateSync();
 }
 function goLaunch(){document.getElementById('app').classList.add('hidden');document.getElementById('launch').classList.remove('hidden');activeRole=null;pendingWaiterId=null;activeWaiterId=null;}
 function lockSession(){toast('Session locked');goLaunch();}
+function toggleTheme(){DB.settings.theme=(DB.settings.theme==='light')?'dark':'light';applyTheme();save();toast((DB.settings.theme==='light'?'Light':'Dark')+' mode');}
 
 /* ---------- PIN ---------- */
 function openPin(resolve,title,hint){pendingPinResolve=resolve;pendingPinCancel=()=>{pendingPinResolve=null;pendingWaiterId=null;activeWaiterId=null;closeModal('pinModal');document.getElementById('launch').classList.remove('hidden');};if(title)document.getElementById('pinTitle').textContent=title;if(hint)document.getElementById('pinHint').textContent=hint;document.getElementById('launch').classList.add('hidden');openModal('pinModal');['p1','p2','p3','p4'].forEach((id,i)=>{const e=document.getElementById(id);e.value='';});document.getElementById('p1').focus();
@@ -891,6 +908,10 @@ function renderBossSet(){
     <div class="kpi" style="margin-bottom:10px"><div class="l">Counter PIN (4 digits)</div><input id="setCounterPin" maxlength="4" inputmode="numeric" value="${DB.settings.counterPin||'0000'}" style="margin-top:6px;max-width:140px"></div>
     <div class="kpi" style="margin-bottom:10px"><div class="l">This waiter's ID (for Waiter role)</div><select id="setWaiter" style="margin-top:6px">${DB.waiters.map(w=>`<option value="${w.id}" ${DB.settings.waiterId===w.id?'selected':''}>${w.name}</option>`).join('')}</select></div>
     <div class="kpi" style="margin-bottom:10px"><div class="l">Tables / Floor (comma-separated, e.g. T1,T2,Bar1)</div><input id="setTables" value="${(DB.tables||[]).map(t=>t.name).join(',')}" style="margin-top:6px"></div>
+    <div class="kpi" style="margin-bottom:10px"><div class="l">Appearance</div>
+      <label style="font-size:14px;display:flex;align-items:center;gap:8px;margin-top:6px"><input type="checkbox" id="setTheme" ${DB.settings.theme==='light'?'checked':''} style="width:auto"> Light mode</label>
+      <p class="small muted" style="margin-top:4px">Dark by default — light mode for bright venues / customer-facing screens.</p>
+    </div>
     <div class="kpi" style="margin-bottom:10px"><div class="l">Cloud Sync</div>
       <label style="font-size:14px;display:flex;align-items:center;gap:8px;margin-top:6px"><input type="checkbox" id="setSync" ${(!DB.settings.cloud||DB.settings.cloud.enabled)?'checked':''} style="width:auto"> Enable live multi-device sync</label>
       <p class="small muted" style="margin-top:6px">When on, waiter and counter devices share one live ledger (needs internet). Works fully offline otherwise — staff use the Counter device.</p>
@@ -908,6 +929,7 @@ function saveSettings(){
   if(/^\d{1,2}$/.test(ds)&&+ds>=0&&+ds<=23)DB.settings.dayStart=+ds;else DB.settings.dayStart=5;
   const tblRaw=document.getElementById('setTables').value.split(',').map(x=>x.trim()).filter(Boolean);
   DB.tables=tblRaw.map(n=>({name:n}));
+  DB.settings.theme=document.getElementById('setTheme').checked?'light':'dark';applyTheme();
   const cloudOn=document.getElementById('setSync').checked;
   if(cloudOn){ if(syncInit()){DB.settings.cloud={enabled:true};startSync();syncConfig();toast('Cloud Sync ON');} else {toast('Cloud Sync not configured — add Firebase config in code');} }
   else {DB.settings.cloud={enabled:false};if(syncUnsub){syncUnsub();syncUnsub=null;}if(cfgUnsub){cfgUnsub();cfgUnsub=null;}syncReady=false;toast('Cloud Sync OFF (local)');}
