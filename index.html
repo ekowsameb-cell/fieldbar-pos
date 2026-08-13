@@ -87,6 +87,11 @@
   .banner.ok{background:#052e16;color:#bbf7d0;border-bottom:1px solid #166534}
   .pinbox{display:flex;gap:8px;justify-content:center;margin:16px 0}
   .pinbox input{width:46px;text-align:center;font-size:22px;letter-spacing:6px;padding:8px}
+
+  /* floating lock button */
+  .lockbtn{position:fixed;right:14px;bottom:14px;z-index:40;border-radius:50%;width:54px;height:54px;font-size:22px;
+    display:flex;align-items:center;justify-content:center;box-shadow:0 6px 18px rgba(0,0,0,.45);border:1px solid var(--line)}
+  .lockbtn:active{transform:scale(.94)}
 </style>
 </head>
 <body>
@@ -105,6 +110,7 @@
 
 <!-- APP -->
 <div id="app" class="hidden">
+  <button class="lockbtn" onclick="lockSession()" title="Lock session (requires PIN to reopen)">🔒</button>
   <header>
     <h1 id="appTitle">Bamobi City Lounge</h1>
     <span class="role-chip" id="roleChip"></span>
@@ -368,6 +374,7 @@ function enterRole(r){
   updateSync();
 }
 function goLaunch(){document.getElementById('app').classList.add('hidden');document.getElementById('launch').classList.remove('hidden');activeRole=null;pendingWaiterId=null;}
+function lockSession(){toast('Session locked');goLaunch();}
 
 /* ---------- PIN ---------- */
 function openPin(resolve,title,hint){pendingPinResolve=resolve;pendingPinCancel=null;if(title)document.getElementById('pinTitle').textContent=title;if(hint)document.getElementById('pinHint').textContent=hint;openModal('pinModal');['p1','p2','p3','p4'].forEach((id,i)=>{const e=document.getElementById(id);e.value='';});document.getElementById('p1').focus();
