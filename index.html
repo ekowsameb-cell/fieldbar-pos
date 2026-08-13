@@ -387,14 +387,14 @@ function goLaunch(){document.getElementById('app').classList.add('hidden');docum
 function lockSession(){toast('Session locked');goLaunch();}
 
 /* ---------- PIN ---------- */
-function openPin(resolve,title,hint){pendingPinResolve=resolve;pendingPinCancel=null;if(title)document.getElementById('pinTitle').textContent=title;if(hint)document.getElementById('pinHint').textContent=hint;document.getElementById('launch').classList.add('hidden');openModal('pinModal');['p1','p2','p3','p4'].forEach((id,i)=>{const e=document.getElementById(id);e.value='';});document.getElementById('p1').focus();
+function openPin(resolve,title,hint){pendingPinResolve=resolve;pendingPinCancel=()=>{pendingPinResolve=null;pendingWaiterId=null;activeWaiterId=null;closeModal('pinModal');document.getElementById('launch').classList.remove('hidden');};if(title)document.getElementById('pinTitle').textContent=title;if(hint)document.getElementById('pinHint').textContent=hint;document.getElementById('launch').classList.add('hidden');openModal('pinModal');['p1','p2','p3','p4'].forEach((id,i)=>{const e=document.getElementById(id);e.value='';});document.getElementById('p1').focus();
   ['p1','p2','p3','p4'].forEach((id,i)=>{const e=document.getElementById(id);e.oninput=()=>{if(e.value&&i<3)document.getElementById('p'+(i+2)).focus();};});}
 function checkPin(){const code=['p1','p2','p3','p4'].map(id=>document.getElementById(id).value).join('');const role=document.getElementById('pinTitle').textContent;
   let ok=false;
   if(role.indexOf('Waiter')>=0){const w=DB.waiters.find(x=>x.id===pendingWaiterId);ok=w&&code===(w.pin||'0000');}
   else if(role.indexOf('Counter')>=0){ok=code===(DB.settings.counterPin||'0000');}
   else {ok=code===DB.settings.bossPin;}
-  if(ok){closeModal('pinModal');const f=pendingPinResolve;pendingPinResolve=null;pendingWaiterId=null;if(f)f();}else{toast('Wrong PIN');}}
+  if(ok){closeModal('pinModal');const f=pendingPinResolve;pendingPinResolve=null;pendingPinCancel=null;pendingWaiterId=null;activeWaiterId=null;if(f)f();}else{toast('Wrong PIN');}}
 
 /* ---------- modal helpers ---------- */
 function openModal(id){document.getElementById(id).classList.add('on');}
