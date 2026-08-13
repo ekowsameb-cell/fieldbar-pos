@@ -50,6 +50,8 @@
   input,select,textarea{background:var(--ink);color:var(--txt);border:1px solid var(--line);border-radius:9px;padding:10px;font-size:14px;width:100%;font-family:inherit}
   .modal{position:fixed;inset:0;background:rgba(2,6,23,.7);display:none;align-items:center;justify-content:center;z-index:100;padding:16px}
   .modal.on{display:flex}
+  /* auth modals must always sit above the launch overlay (v2.3 boss fix applied to waiter/counter) */
+  .modal#pinModal,.modal#waiterPickModal{z-index:200}
   .sheet{background:var(--panel);border-radius:16px;width:100%;max-width:460px;max-height:88vh;overflow:auto;padding:16px}
   .sheet h3{margin:0 0 12px}
   .paybtn{flex:1;text-align:center;padding:12px;border-radius:10px;font-weight:700;cursor:pointer;border:1px solid var(--line);background:var(--panel2)}
@@ -64,7 +66,7 @@
   .pill.fulfilled{background:#15803d;color:#fff}
   .pill.paid{background:#15803d;color:#fff}
   .pill.pending{background:#b45309;color:#fff}
-  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#04141f;border:1px solid var(--line);padding:10px 16px;border-radius:10px;display:none;z-index:120}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#04141f;border:1px solid var(--line);padding:10px 16px;border-radius:10px;display:none;z-index:210}
   .toast.on{display:block}
   .muted{color:var(--muted)}
   .small{font-size:12px}
@@ -193,6 +195,7 @@
   <div class="sheet">
     <h3>Select Waiter</h3>
     <div id="waiterPickList"></div>
+    <div class="row" style="justify-content:center;margin-top:8px"><button class="btn ghost" onclick="cancelWaiterPick()">Cancel</button></div>
   </div>
 </div>
 
@@ -348,8 +351,10 @@ function openWaiterPick(){
   if(!DB.waiters.length){toast('No waiters set up - ask Boss to add one');return;}
   const el=document.getElementById('waiterPickList');
   el.innerHTML=DB.waiters.map(w=>`<div class="ticket" style="cursor:pointer" onclick="waiterPicked('${w.id}')"><div class="tt">${w.name}</div><div class="waiter small muted">Tap then enter PIN</div></div>`).join('');
+  document.getElementById('launch').classList.add('hidden');
   openModal('waiterPickModal');
 }
+function cancelWaiterPick(){closeModal('waiterPickModal');document.getElementById('launch').classList.remove('hidden');}
 function waiterPicked(id){
   closeModal('waiterPickModal');
   pendingWaiterId=id;
@@ -377,7 +382,7 @@ function goLaunch(){document.getElementById('app').classList.add('hidden');docum
 function lockSession(){toast('Session locked');goLaunch();}
 
 /* ---------- PIN ---------- */
-function openPin(resolve,title,hint){pendingPinResolve=resolve;pendingPinCancel=null;if(title)document.getElementById('pinTitle').textContent=title;if(hint)document.getElementById('pinHint').textContent=hint;openModal('pinModal');['p1','p2','p3','p4'].forEach((id,i)=>{const e=document.getElementById(id);e.value='';});document.getElementById('p1').focus();
+function openPin(resolve,title,hint){pendingPinResolve=resolve;pendingPinCancel=null;if(title)document.getElementById('pinTitle').textContent=title;if(hint)document.getElementById('pinHint').textContent=hint;document.getElementById('launch').classList.add('hidden');openModal('pinModal');['p1','p2','p3','p4'].forEach((id,i)=>{const e=document.getElementById(id);e.value='';});document.getElementById('p1').focus();
   ['p1','p2','p3','p4'].forEach((id,i)=>{const e=document.getElementById(id);e.oninput=()=>{if(e.value&&i<3)document.getElementById('p'+(i+2)).focus();};});}
 function checkPin(){const code=['p1','p2','p3','p4'].map(id=>document.getElementById(id).value).join('');const role=document.getElementById('pinTitle').textContent;
   let ok=false;
