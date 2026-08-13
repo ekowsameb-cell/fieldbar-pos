@@ -106,13 +106,26 @@
   .report-card .rkpis .l{color:var(--muted);font-size:11px}
   .report-card .rline{padding:8px 0;border-bottom:1px dashed var(--line);display:grid;grid-template-columns:1fr auto;gap:4px;font-size:14px}
   /* party vibe background (baked locally so it works offline) */
-  body.party-bg{background-image:linear-gradient(rgba(28,10,14,.72),rgba(20,7,8,.80)),url('bg-party.jpg');background-size:cover;background-position:center;background-attachment:fixed;background-color:var(--bg)}
-  body.party-bg .modal{background:rgba(2,6,23,.78)}
-  body.party-bg .sheet{background:rgba(58,18,24,.96)}
-  body.party-bg .ticket{background:rgba(58,18,24,.96)}
-  body.party-bg .kpi{background:rgba(58,18,24,.96)}
-  body.party-bg .pcard{background:rgba(58,18,24,.96)}
-  body.party-bg input,body.party-bg select,body.party-bg textarea{background:rgba(20,7,8,.92)}
+  body.party-bg{background-image:linear-gradient(rgba(20,7,10,.42),rgba(15,5,7,.55)),url('bg-party.jpg');background-size:cover;background-position:center;background-attachment:fixed;background-color:var(--bg)}
+  body.party-bg .modal{background:rgba(2,6,23,.82)}
+  body.party-bg .sheet{background:rgba(35,12,17,.9)}
+  body.party-bg .ticket{background:rgba(35,12,17,.9)}
+  body.party-bg .kpi{background:rgba(35,12,17,.9)}
+  body.party-bg .pcard{background:rgba(35,12,17,.9)}
+  body.party-bg input,body.party-bg select,body.party-bg textarea{background:rgba(20,7,8,.9)}
+  body.party-bg .role-hero{background:rgba(15,5,7,.55)!important;backdrop-filter:blur(2px)}
+  /* role icon + hero */
+  .role-hero{display:flex;align-items:center;gap:12px;padding:14px 16px;border-radius:14px;background:var(--panel);margin-bottom:12px}
+  .role-hero .ricon{width:46px;height:46px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+  .role-hero .ricon svg{width:30px;height:30px;display:block}
+  .role-hero .rtxt h3{margin:0;font-size:16px}
+  .role-hero .rtxt p{margin:2px 0 0;font-size:12px;color:var(--muted)}
+  .ricon.counter{background:rgba(14,165,233,.18);color:#38bdf8}
+  .ricon.waiter{background:rgba(34,197,94,.18);color:#4ade80}
+  .ricon.boss{background:rgba(168,85,247,.18);color:#c084fc}
+  .role-chip .ricon-sm{width:16px;height:16px;vertical-align:-3px;margin-right:4px}
+  .role-chip .ricon-sm svg{width:16px;height:16px}
+  .rolebtn .ricon-sm{background:rgba(255,255,255,.14)!important;margin-right:8px;vertical-align:-5px}
   /* waiter floor map */
   .floor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;margin-top:10px}
   .floor-tile{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 8px;color:var(--txt);text-align:center;cursor:pointer;display:flex;flex-direction:column;gap:4px;justify-content:center}
@@ -127,7 +140,7 @@
   .chart .bar{flex:1;background:linear-gradient(180deg,var(--counter),#a8430a);border-radius:4px 4px 0 0;min-height:2px;position:relative;display:flex;align-items:flex-start;justify-content:center}
   .chart .bar .barv{font-size:9px;color:var(--bg);font-weight:700;margin-top:-14px;white-space:nowrap}
   .chart .axis{display:flex;justify-content:space-between;color:var(--muted);font-size:10px;margin-top:4px;padding:0 2px}
-  body.party-bg .chart .bars{background:rgba(20,7,8,.92)}
+  body.party-bg .chart .bars{background:rgba(20,7,8,.9)}
   @media print{
     body.party-bg,body.party-bg *{background-image:none!important;background:#fff!important;color:#000!important}
     body *{visibility:hidden}
@@ -147,9 +160,9 @@
   <img src="logo.png" alt="Bamobi City Lounge" style="width:130px;height:auto;display:block;margin:0 auto 6px;border-radius:12px">
   <h2>Bamobi City Lounge</h2>
   <p class="sub">Field POS — choose your role to start</p>
-  <button class="rolebtn counter" onclick="pickRole('counter')">🟠 Counter<small>Walk-in sales + fulfill waiter orders + own stock</small></button>
-  <button class="rolebtn waiter" onclick="pickRole('waiter')">🟡 Waiter<small>Take table orders, collect money, send to counter</small></button>
-  <button class="rolebtn boss" onclick="pickRole('boss')">🔴 Boss<small>Dashboard, close night, manage menu & staff</small></button>
+  <button class="rolebtn counter" onclick="pickRole('counter')"><span class="ricon-sm counter" style="width:22px;height:22px;display:inline-flex;border-radius:7px">${ROLE_ICONS.counter}</span>🟠 Counter<small>Walk-in sales + fulfill waiter orders + own stock</small></button>
+  <button class="rolebtn waiter" onclick="pickRole('waiter')"><span class="ricon-sm waiter" style="width:22px;height:22px;display:inline-flex;border-radius:7px">${ROLE_ICONS.waiter}</span>🟡 Waiter<small>Take table orders, collect money, send to counter</small></button>
+  <button class="rolebtn boss" onclick="pickRole('boss')"><span class="ricon-sm boss" style="width:22px;height:22px;display:inline-flex;border-radius:7px">${ROLE_ICONS.boss}</span>🔴 Boss<small>Dashboard, close night, manage menu & staff</small></button>
   <p class="small muted" style="text-align:center;margin-top:18px">Offline-first. Works without internet — all data stays on this device.<br>If internet drops, staff use the <b>Counter device</b> for everything.</p>
   <p class="small" style="text-align:center;margin-top:10px;color:var(--waiter)">⚡ Powered by <b>Providers Consultancy</b></p>
 </div>
@@ -167,6 +180,10 @@
 
   <!-- COUNTER -->
   <div id="role-counter" class="roleview hidden">
+    <div class="role-hero">
+      <div class="ricon counter">${ROLE_ICONS.counter}</div>
+      <div class="rtxt"><h3>Counter · Supervisor</h3><p>Walk-in sales, fulfill waiter orders, manage stock & reports</p></div>
+    </div>
     <div class="tabbar">
       <div class="tab on" data-cv="cwalk" onclick="switchC('cwalk')">Walk-in Sale</div>
       <div class="tab" data-cv="cpending" onclick="switchC('cpending')">Waiter Orders</div>
@@ -208,6 +225,10 @@
 
   <!-- WAITER -->
   <div id="role-waiter" class="roleview hidden">
+    <div class="role-hero">
+      <div class="ricon waiter">${ROLE_ICONS.waiter}</div>
+      <div class="rtxt"><h3>Waiter · Floor Service</h3><p>Take table orders, collect money, send to counter</p></div>
+    </div>
     <div class="tabbar">
       <div class="tab on" data-wv="wnew" onclick="switchW('wnew')">New Order</div>
       <div class="tab" data-wv="wflo" onclick="switchW('wflo');renderFloor()">Floor Map</div>
@@ -231,6 +252,10 @@
 
   <!-- BOSS -->
   <div id="role-boss" class="roleview hidden">
+    <div class="role-hero">
+      <div class="ricon boss">${ROLE_ICONS.boss}</div>
+      <div class="rtxt"><h3>Boss · Owner Dashboard</h3><p>Sales overview, close night, manage menu, staff & settings</p></div>
+    </div>
     <div class="tabbar">
       <div class="tab on" data-bv="bdash" onclick="switchB('bdash')">Dashboard</div>
       <div class="tab" data-bv="bnight" onclick="switchB('bnight')">Close Night</div>
@@ -398,9 +423,16 @@ const SEED_WAITERS=[{id:'w1',name:'Kofi',pin:'0000'},{id:'w2',name:'Ama',pin:'00
 const SEED_TABLES=[{name:'T1'},{name:'T2'},{name:'T3'},{name:'T4'},{name:'T5'},{name:'T6'},{name:'Bar1'},{name:'Bar2'}];
 
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&d.products)return d;}catch(e){}
-  const def={role:null,deviceId:uid(),products:SEED_PRODUCTS.slice(),waiters:SEED_WAITERS.slice(),tables:SEED_TABLES.slice(),credit:[],ledger:[],settings:{bossPin:'0000',counterPin:'0000',venue:'Bamobi City Lounge',waiterId:null}};
+  const def={role:null,deviceId:uid(),products:SEED_PRODUCTS.slice(),waiters:SEED_WAITERS.slice(),tables:SEED_TABLES.slice(),credit:[],ledger:[],settings:{bossPin:'0000',counterPin:'0000',venue:'Bamobi City Lounge',waiterId:null,partyBg:true}};
   return def;}
 function save(){localStorage.setItem(KEY,JSON.stringify(DB));}
+/* ---------- ROLE ICONS (inline SVG, offline) ---------- */
+const ROLE_ICONS={
+  counter:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16v3H4z"/><path d="M7 9v8m10-8v8"/><path d="M4 6l1-2h14l1 2"/><circle cx="12" cy="14" r="2.2"/><path d="M10 18l2-2 2 2"/></svg>',
+  waiter:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><path d="M12 7v6m0 0l5 4M12 13l-5 4"/><path d="M9 9h6"/></svg>',
+  boss:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4L3.2 8.7l5.4-.8z"/><path d="M9 21h6"/></svg>'
+};
+function applyPartyBg(){document.body.classList.toggle('party-bg', !!(DB.settings&&DB.settings.partyBg));}
 function uid(){return Math.random().toString(36).slice(2,10)+Date.now().toString(36);}
 function todayStr(){return bizDayKey(new Date());}
 function bizDayKey(d){
@@ -418,6 +450,7 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.cla
 function $(s){return document.querySelector(s);}
 function $all(s){return Array.from(document.querySelectorAll(s));}
 let DB=load();
+applyPartyBg();
 let activeRole=null;
 let pendingPinResolve=null;
 let pendingPinCancel=null;
@@ -453,13 +486,14 @@ function enterRole(r){
   const meta={counter:['🟠 Counter','#0EA5E9','#04141f'],waiter:['🟡 Waiter','#22c55e','#052e16'],boss:['🔴 Boss','#a855f7','#fff']};
   let label=meta[r][0], bg=meta[r][1], fg=meta[r][2];
   if(r==='waiter'){const wn=currentWaiterName();if(wn&&wn!=='Waiter'){label='🟡 '+wn;}}
-  const chip=document.getElementById('roleChip');chip.textContent=label;chip.style.background=bg;chip.style.color=fg;
+  const chip=document.getElementById('roleChip');chip.innerHTML='<span class="ricon-sm '+r+'">'+ROLE_ICONS[r]+'</span>'+label;
   document.getElementById('appTitle').textContent=(DB.settings.venue||'Bamobi City Lounge')+' POS';
   // tab accents
   $all('#role-'+r+' .tab').forEach(t=>t.style.setProperty('--on',bg));
   if(r==='counter'){switchC('cwalk');renderCounterToday();}
   if(r==='waiter'){switchW('wnew');renderWaiterToday();}
   if(r==='boss'){switchB('bdash');renderBoss();}
+  applyPartyBg();
   updateSync();
 }
 function goLaunch(){document.getElementById('app').classList.add('hidden');document.getElementById('launch').classList.remove('hidden');activeRole=null;pendingWaiterId=null;activeWaiterId=null;}
@@ -865,6 +899,9 @@ function renderBossSet(){
     <div class="kpi" style="margin-bottom:10px"><div class="l">Counter PIN (4 digits)</div><input id="setCounterPin" maxlength="4" inputmode="numeric" value="${DB.settings.counterPin||'0000'}" style="margin-top:6px;max-width:140px"></div>
     <div class="kpi" style="margin-bottom:10px"><div class="l">This waiter's ID (for Waiter role)</div><select id="setWaiter" style="margin-top:6px">${DB.waiters.map(w=>`<option value="${w.id}" ${DB.settings.waiterId===w.id?'selected':''}>${w.name}</option>`).join('')}</select></div>
     <div class="kpi" style="margin-bottom:10px"><div class="l">Tables / Floor (comma-separated, e.g. T1,T2,Bar1)</div><input id="setTables" value="${(DB.tables||[]).map(t=>t.name).join(',')}" style="margin-top:6px"></div>
+    <div class="kpi" style="margin-bottom:10px"><div class="l">Party background image</div>
+      <label style="font-size:14px;display:flex;align-items:center;gap:8px;margin-top:6px"><input type="checkbox" id="setParty" ${DB.settings.partyBg!==false?'checked':''} style="width:auto"> Show neon party vibe background</label>
+    </div>
     <div class="kpi" style="margin-bottom:10px"><div class="l">Cloud Sync</div>
       <label style="font-size:14px;display:flex;align-items:center;gap:8px;margin-top:6px"><input type="checkbox" id="setSync" ${(!DB.settings.cloud||DB.settings.cloud.enabled)?'checked':''} style="width:auto"> Enable live multi-device sync</label>
       <p class="small muted" style="margin-top:6px">When on, waiter and counter devices share one live ledger (needs internet). Works fully offline otherwise — staff use the Counter device.</p>
@@ -882,6 +919,7 @@ function saveSettings(){
   if(/^\d{1,2}$/.test(ds)&&+ds>=0&&+ds<=23)DB.settings.dayStart=+ds;else DB.settings.dayStart=5;
   const tblRaw=document.getElementById('setTables').value.split(',').map(x=>x.trim()).filter(Boolean);
   DB.tables=tblRaw.map(n=>({name:n}));
+  DB.settings.partyBg=document.getElementById('setParty').checked;applyPartyBg();
   const cloudOn=document.getElementById('setSync').checked;
   if(cloudOn){ if(syncInit()){DB.settings.cloud={enabled:true};startSync();syncConfig();toast('Cloud Sync ON');} else {toast('Cloud Sync not configured — add Firebase config in code');} }
   else {DB.settings.cloud={enabled:false};if(syncUnsub){syncUnsub();syncUnsub=null;}if(cfgUnsub){cfgUnsub();cfgUnsub=null;}syncReady=false;toast('Cloud Sync OFF (local)');}
