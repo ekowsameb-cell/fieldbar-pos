@@ -359,9 +359,11 @@ function cancelWaiterPick(){closeModal('waiterPickModal');document.getElementByI
 function waiterPicked(id){
   closeModal('waiterPickModal');
   pendingWaiterId=id;
+  activeWaiterId=id;
   openPin(()=>enterRole('waiter'),'Waiter PIN','Enter your PIN: '+DB.waiters.find(x=>x.id===id).name);
 }
 let pendingWaiterId=null;
+let activeWaiterId=null;
 function enterRole(r){
   activeRole=r;
   document.getElementById('launch').classList.add('hidden');
@@ -369,7 +371,8 @@ function enterRole(r){
   $all('.roleview').forEach(x=>x.classList.add('hidden'));
   document.getElementById('role-'+r).classList.remove('hidden');
   const meta={counter:['🟠 Counter','#0EA5E9','#04141f'],waiter:['🟡 Waiter','#22c55e','#052e16'],boss:['🔴 Boss','#a855f7','#fff']};
-  const [label,bg,fg]=meta[r];
+  let label=meta[r][0], bg=meta[r][1], fg=meta[r][2];
+  if(r==='waiter'){const wn=currentWaiterName();if(wn&&wn!=='Waiter'){label='🟡 '+wn;}}
   const chip=document.getElementById('roleChip');chip.textContent=label;chip.style.background=bg;chip.style.color=fg;
   document.getElementById('appTitle').textContent=(DB.settings.venue||'Bamobi City Lounge')+' POS';
   // tab accents
@@ -379,7 +382,7 @@ function enterRole(r){
   if(r==='boss'){switchB('bdash');renderBoss();}
   updateSync();
 }
-function goLaunch(){document.getElementById('app').classList.add('hidden');document.getElementById('launch').classList.remove('hidden');activeRole=null;pendingWaiterId=null;}
+function goLaunch(){document.getElementById('app').classList.add('hidden');document.getElementById('launch').classList.remove('hidden');activeRole=null;pendingWaiterId=null;activeWaiterId=null;}
 function lockSession(){toast('Session locked');goLaunch();}
 
 /* ---------- PIN ---------- */
@@ -437,6 +440,7 @@ function testSync(){
 
 /* ---------- CURRENT WAITER ID (for waiter role) ---------- */
 function currentWaiterId(){
+  if(activeWaiterId)return activeWaiterId;
   if(DB.settings.waiterId)return DB.settings.waiterId;
   if(DB.waiters.length){DB.settings.waiterId=DB.waiters[0].id;save();return DB.settings.waiterId;}
   return null;
