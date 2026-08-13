@@ -746,6 +746,16 @@ function applyConfig(c){
     });
   }
   save();
+  // BACKFILL: patch any existing orders that lack a waiterName now that the
+  // waiter list is (re)populated. Fixes 'code name' showing for pre-v2.20 orders.
+  let patched = false;
+  const wByName = {}; DB.waiters.forEach(w => wByName[w.id] = w.name);
+  DB.ledger.forEach(e => {
+    if(e.role === 'waiter' && !e.waiterName && wByName[e.waiterId]){
+      e.waiterName = wByName[e.waiterId]; patched = true;
+    }
+  });
+  if(patched) save();
   // re-render whatever screen we're on
   if(activeRole === 'boss'){ renderBoss(); }
   if(activeRole === 'counter'){ renderStock(); }
