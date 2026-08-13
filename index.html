@@ -8,9 +8,9 @@
 <meta name="theme-color" content="#7A1F2B">
 <style>
   :root{
-    --bg:#0f172a; --panel:#1e293b; --panel2:#273449; --line:#334155;
-    --txt:#e2e8f0; --muted:#94a3b8; --ink:#0b1220;
-    --counter:#0EA5E9; --waiter:#22c55e; --boss:#a855f7;
+    --bg:#1c0a0e; --panel:#3a1218; --panel2:#4a161d; --line:#5a1e26;
+    --txt:#fde8e0; --muted:#c98a82; --ink:#140708;
+    --counter:#FF6B00; --waiter:#F5A623; --boss:#E11D2A;
     --good:#22c55e; --warn:#f59e0b; --bad:#ef4444;
   }
   *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -94,10 +94,11 @@
   <img src="logo.png" alt="Bamobi City Lounge" style="width:130px;height:auto;display:block;margin:0 auto 6px;border-radius:12px">
   <h2>Bamobi City Lounge</h2>
   <p class="sub">Field POS — choose your role to start</p>
-  <button class="rolebtn counter" onclick="pickRole('counter')">🔵 Counter<small>Walk-in sales + fulfill waiter orders + own stock</small></button>
-  <button class="rolebtn waiter" onclick="pickRole('waiter')">🟢 Waiter<small>Take table orders, collect money, send to counter</small></button>
-  <button class="rolebtn boss" onclick="pickRole('boss')">🟣 Boss<small>Dashboard, close night, manage menu & staff</small></button>
+  <button class="rolebtn counter" onclick="pickRole('counter')">🟠 Counter<small>Walk-in sales + fulfill waiter orders + own stock</small></button>
+  <button class="rolebtn waiter" onclick="pickRole('waiter')">🟡 Waiter<small>Take table orders, collect money, send to counter</small></button>
+  <button class="rolebtn boss" onclick="pickRole('boss')">🔴 Boss<small>Dashboard, close night, manage menu & staff</small></button>
   <p class="small muted" style="text-align:center;margin-top:18px">Offline-first. Works without internet — all data stays on this device.<br>If internet drops, staff use the <b>Counter device</b> for everything.</p>
+  <p class="small" style="text-align:center;margin-top:10px;color:var(--waiter)">⚡ Powered by <b>Providers Consultancy</b></p>
 </div>
 
 <!-- APP -->
@@ -169,7 +170,7 @@
 <!-- PIN MODAL -->
 <div class="modal" id="pinModal">
   <div class="sheet" style="max-width:360px;text-align:center">
-    <h3>🟣 Boss PIN</h3>
+    <h3>🔴 Boss PIN</h3>
     <p class="small muted">Default PIN is 0000</p>
     <div class="pinbox">
       <input id="p1" maxlength="1" inputmode="numeric"><input id="p2" maxlength="1" inputmode="numeric"><input id="p3" maxlength="1" inputmode="numeric"><input id="p4" maxlength="1" inputmode="numeric">
@@ -312,7 +313,7 @@ function enterRole(r){
   document.getElementById('app').classList.remove('hidden');
   $all('.roleview').forEach(x=>x.classList.add('hidden'));
   document.getElementById('role-'+r).classList.remove('hidden');
-  const meta={counter:['🔵 Counter','#0EA5E9','#04141f'],waiter:['🟢 Waiter','#22c55e','#052e16'],boss:['🟣 Boss','#a855f7','#fff']};
+  const meta={counter:['🟠 Counter','#0EA5E9','#04141f'],waiter:['🟡 Waiter','#22c55e','#052e16'],boss:['🔴 Boss','#a855f7','#fff']};
   const [label,bg,fg]=meta[r];
   const chip=document.getElementById('roleChip');chip.textContent=label;chip.style.background=bg;chip.style.color=fg;
   document.getElementById('appTitle').textContent=(DB.settings.venue||'Bamobi City Lounge')+' POS';
@@ -468,6 +469,7 @@ function billHTML(e){
     <div style="display:flex;justify-content:space-between;font-size:18px;font-weight:800"><span>TOTAL</span><span>${money(e.amount)}</span></div>
     <p class="muted small" style="margin-top:8px">Table: ${e.table||'—'} · Paid via ${e.payment.toUpperCase()} · ${w?w.name:'Waiter'}</p>
     <p class="muted small">Thank you for visiting! 🍸</p>
+    <p class="small" style="margin-top:4px;color:var(--waiter)">⚡ Powered by <b>Providers Consultancy</b></p>
   </div>`;
 }
 function showBill(id){
