@@ -410,6 +410,29 @@ function updateSync(){
 window.addEventListener('online',updateSync);
 window.addEventListener('offline',updateSync);
 
+/* ---------- Test Sync (diagnostic — reveals real Firebase errors) ---------- */
+function setSyncStatus(msg,kind){const b=document.getElementById('syncBanner');if(!b)return;b.className='banner '+(kind||'warn');b.textContent=msg;b.classList.remove('hidden');}
+function testSync(){
+  const diag=document.getElementById('syncDiag');
+  const sayDiag=m=>{if(diag)diag.textContent=m;};
+  if(!navigator.onLine){toast('Phone is offline — connect to internet first');setSyncStatus('🔴 OFFLINE — connect to internet, then Test Sync','off');sayDiag('Offline');return;}
+  if(!syncInit()){toast('Firebase not configured');setSyncStatus('🔴 SYNC ERROR: Firebase not initialized (config missing?)','off');sayDiag('Firebase not initialized');return;}
+  setSyncStatus('🟡 Testing sync… writing a probe doc','warn');sayDiag('Testing…');
+  const probe={_probe:true,ts:new Date().toISOString(),id:'__probe__'+Date.now()};
+  firestoreDb.collection('ledger').doc(probe.id).set(probe).then(()=>{
+    setSyncStatus('🟢 SYNC OK — Firebase writable (waiter→counter will work)','ok');
+    sayDiag('Last sync: '+new Date().toLocaleTimeString());
+    // clean up the probe so it doesn't clutter the ledger
+    return firestoreDb.collection('ledger').doc(probe.id).delete().catch(()=>{});
+  }).catch(err=>{
+    const reason=(err&&err.message)?err.message:(err&&err.code)?err.code:String(err);
+    toast('Sync failed: '+reason);
+    setSyncStatus('🔴 SYNC ERROR: '+reason,'off');
+    sayDiag('Sync error: '+reason);
+    console.error('Firebase sync error:',err);
+  });
+}
+
 /* ---------- CURRENT WAITER ID (for waiter role) ---------- */
 function currentWaiterId(){
   if(DB.settings.waiterId)return DB.settings.waiterId;
@@ -650,6 +673,8 @@ function renderBossSet(){
     <div class="kpi" style="margin-bottom:10px"><div class="l">Cloud Sync</div>
       <label style="font-size:14px;display:flex;align-items:center;gap:8px;margin-top:6px"><input type="checkbox" id="setSync" ${DB.settings.cloud&&DB.settings.cloud.enabled?'checked':''} style="width:auto"> Enable live multi-device sync</label>
       <p class="small muted" style="margin-top:6px">When on, waiter and counter devices share one live ledger (needs internet). Works fully offline otherwise — staff use the Counter device.</p>
+      <button class="btn ghost" style="margin-top:8px" onclick="testSync()">🔧 Test Sync (diagnose)</button>
+      <div class="small muted" style="margin-top:6px" id="syncDiag">${DB.settings.lastSync?('Last synced: '+new Date(DB.settings.lastSync).toLocaleTimeString()):'Never synced yet'}</div>
     </div>
     <button class="btn purple" onclick="saveSettings()">Save Settings</button>`;
 }
@@ -672,8 +697,8 @@ function saveCredit(){const n=document.getElementById('cName').value.trim();if(!
 /* ---------- backup / sync ---------- */
 function exportBackup(){const blob=new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='fieldbar-backup-'+todayStr()+'.json';a.click();toast('Backup exported');}
 function syncPush(entry){
-  if(!syncReady||!firestoreDb)return;
-  try{firestoreDb.collection('ledger').doc(entry.id).set(entry,{merge:true}).then(()=>{entry.synced=true;save();}).catch(()=>{});}catch(e){}
+  if(!syncReady||!firestoreDb){console.warn('syncPush skipped: sync not ready');return;}
+  try{firestoreDb.collection('ledger').doc(entry.id).set(entry,{merge:true}).then(()=>{entry.synced=true;DB.settings.lastSync=new Date().toISOString();save();}).catch(err=>{console.error('syncPush failed:',err);});}catch(e){console.error('syncPush exception:',e);}
 }
 function startSync(){
   if(!syncReady||!firestoreDb)return;
