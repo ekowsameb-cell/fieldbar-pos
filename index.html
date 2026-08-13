@@ -713,7 +713,7 @@ function buildConfig(){
     counterPin: d.counterPin || '0000',
     waiterId: d.waiterId || null,
     cloud: d.cloud || { enabled: true },
-    products: DB.products.map(p => ({ id: p.id, name: p.name, cat: p.cat, price: p.price, low: p.low || 5 })),
+    products: DB.products.map(p => ({ id: p.id, name: p.name, cat: p.cat, price: p.price, low: p.low || 5, stock: p.stock || 0 })),
     waiters: DB.waiters.map(w => ({ id: w.id, name: w.name, pin: w.pin || '0000' })),
     credit: (DB.credit || []).map(c => ({ id: c.id, name: c.name, phone: c.phone || '', limit: c.limit || null })),
   };
