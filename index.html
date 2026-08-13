@@ -394,7 +394,7 @@ function checkPin(){const code=['p1','p2','p3','p4'].map(id=>document.getElement
   if(role.indexOf('Waiter')>=0){const w=DB.waiters.find(x=>x.id===pendingWaiterId);ok=w&&code===(w.pin||'0000');}
   else if(role.indexOf('Counter')>=0){ok=code===(DB.settings.counterPin||'0000');}
   else {ok=code===DB.settings.bossPin;}
-  if(ok){closeModal('pinModal');const f=pendingPinResolve;pendingPinResolve=null;pendingPinCancel=null;pendingWaiterId=null;activeWaiterId=null;if(f)f();}else{toast('Wrong PIN');}}
+  if(ok){closeModal('pinModal');const f=pendingPinResolve;pendingPinResolve=null;pendingPinCancel=null;pendingWaiterId=null;if(f)f();}else{toast('Wrong PIN');}}
 
 /* ---------- modal helpers ---------- */
 function openModal(id){document.getElementById(id).classList.add('on');}
