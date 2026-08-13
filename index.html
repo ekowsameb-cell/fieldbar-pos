@@ -113,6 +113,21 @@
   body.party-bg .kpi{background:rgba(58,18,24,.96)}
   body.party-bg .pcard{background:rgba(58,18,24,.96)}
   body.party-bg input,body.party-bg select,body.party-bg textarea{background:rgba(20,7,8,.92)}
+  /* waiter floor map */
+  .floor-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px;margin-top:10px}
+  .floor-tile{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 8px;color:var(--txt);text-align:center;cursor:pointer;display:flex;flex-direction:column;gap:4px;justify-content:center}
+  .floor-tile:active{transform:scale(.96)}
+  .floor-tile .tn{font-weight:800;font-size:16px}
+  .floor-tile .ta{font-size:12px;color:var(--muted)}
+  .floor-tile.busy{background:linear-gradient(160deg,rgba(34,197,94,.28),rgba(58,18,24,.96));border-color:var(--good)}
+  .floor-tile.busy .ta{color:var(--good);font-weight:700}
+  /* sales chart */
+  .chart{margin-top:6px}
+  .chart .bars{display:flex;align-items:flex-end;gap:3px;height:120px;background:var(--ink);border-radius:10px;padding:8px 6px}
+  .chart .bar{flex:1;background:linear-gradient(180deg,var(--counter),#a8430a);border-radius:4px 4px 0 0;min-height:2px;position:relative;display:flex;align-items:flex-start;justify-content:center}
+  .chart .bar .barv{font-size:9px;color:var(--bg);font-weight:700;margin-top:-14px;white-space:nowrap}
+  .chart .axis{display:flex;justify-content:space-between;color:var(--muted);font-size:10px;margin-top:4px;padding:0 2px}
+  body.party-bg .chart .bars{background:rgba(20,7,8,.92)}
   @media print{
     body.party-bg,body.party-bg *{background-image:none!important;background:#fff!important;color:#000!important}
     body *{visibility:hidden}
@@ -195,12 +210,17 @@
   <div id="role-waiter" class="roleview hidden">
     <div class="tabbar">
       <div class="tab on" data-wv="wnew" onclick="switchW('wnew')">New Order</div>
+      <div class="tab" data-wv="wflo" onclick="switchW('wflo');renderFloor()">Floor Map</div>
       <div class="tab" data-wv="wmine" onclick="switchW('wmine')">My Orders</div>
       <div class="tab" data-wv="wexp" onclick="switchW('wexp')">Send to Counter</div>
     </div>
     <div class="view on" id="wv-wnew">
       <div class="row"><button class="btn green" onclick="openWaiterOrder()">+ New Table Order</button></div>
       <div id="waiterToday" class="row"></div>
+    </div>
+    <div class="view" id="wv-wflo">
+      <p class="small muted">Tap a table to start or view its order.</p>
+      <div id="floorMap" class="floor-grid"></div>
     </div>
     <div class="view" id="wv-wmine"><div id="waiterOrders"></div></div>
     <div class="view" id="wv-wexp">
@@ -375,9 +395,10 @@ const SEED_PRODUCTS=[
   {id:'f1',name:'SmallChops',cat:'Food',price:15,stock:30,low:8},
 ];
 const SEED_WAITERS=[{id:'w1',name:'Kofi',pin:'0000'},{id:'w2',name:'Ama',pin:'0000'}];
+const SEED_TABLES=[{name:'T1'},{name:'T2'},{name:'T3'},{name:'T4'},{name:'T5'},{name:'T6'},{name:'Bar1'},{name:'Bar2'}];
 
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&d.products)return d;}catch(e){}
-  const def={role:null,deviceId:uid(),products:SEED_PRODUCTS.slice(),waiters:SEED_WAITERS.slice(),credit:[],ledger:[],settings:{bossPin:'0000',counterPin:'0000',venue:'Bamobi City Lounge',waiterId:null}};
+  const def={role:null,deviceId:uid(),products:SEED_PRODUCTS.slice(),waiters:SEED_WAITERS.slice(),tables:SEED_TABLES.slice(),credit:[],ledger:[],settings:{bossPin:'0000',counterPin:'0000',venue:'Bamobi City Lounge',waiterId:null}};
   return def;}
 function save(){localStorage.setItem(KEY,JSON.stringify(DB));}
 function uid(){return Math.random().toString(36).slice(2,10)+Date.now().toString(36);}
@@ -640,14 +661,34 @@ function downloadReport(){
 
 /* ---------- WAITER ---------- */
 function switchW(v){$all('#role-waiter .tab').forEach(t=>t.classList.toggle('on',t.dataset.wv===v));$all('#role-waiter .view').forEach(x=>x.classList.remove('on'));document.getElementById('wv-'+v).classList.add('on');
-  if(v==='wmine')renderWaiterOrders();if(v==='wexp')renderExport();}
+  if(v==='wmine')renderWaiterOrders();if(v==='wexp')renderExport();if(v==='wflo')renderFloor();}
+/* ---------- WAITER FLOOR MAP ---------- */
+function renderFloor(){
+  if(!DB.tables||!DB.tables.length){document.getElementById('floorMap').innerHTML='<p class="muted small">No tables set. Boss can add tables in Settings.</p>';return;}
+  const id=currentWaiterId();
+  const open=DB.ledger.filter(e=>e.role==='waiter'&&e.waiterId===id&&(e.status==='sent'||e.status==='fulfilled')&&bizDayKey(e.ts).startsWith(todayStr()));
+  const byTable={};
+  open.forEach(e=>{byTable[e.table]=(byTable[e.table]||0)+e.amount;});
+  document.getElementById('floorMap').innerHTML=DB.tables.map(t=>{
+    const amt=byTable[t.name]||0;
+    const busy=amt>0;
+    return `<button class="floor-tile ${busy?'busy':''}" onclick="openWaiterOrder('${t.name}')">
+      <div class="tn">${t.name}</div>
+      <div class="ta">${busy?money(amt):'free'}</div>
+    </button>`;
+  }).join('');
+}
 function renderWaiterToday(){
   const id=currentWaiterId();
   const today=DB.ledger.filter(e=>e.role==='waiter'&&e.waiterId===id&&bizDayKey(e.ts).startsWith(todayStr()));
   const t=today.reduce((s,e)=>s+e.amount,0);
   document.getElementById('waiterToday').innerHTML=`<div class="kpi"><div class="n">${money(t)}</div><div class="l">${currentWaiterName()} — collected today</div></div>`;
 }
-function openWaiterOrder(){if(!DB.waiters.length){toast('Ask Boss to add waiters first');return;}openModal('worderModal');document.getElementById('woItems').innerHTML='';woAddRow();woTotal();}
+function openWaiterOrder(table){
+  if(!DB.waiters.length){toast('Ask Boss to add waiters first');return;}
+  if(table)document.getElementById('woTable').value=table;
+  openModal('worderModal');document.getElementById('woItems').innerHTML='';woAddRow();woTotal();
+}
 function woAddRow(){const sel=DB.products.map(p=>`<option value="${p.id}">${p.name} (${money(p.price)})</option>`).join('');const d=document.createElement('div');d.className='row';d.innerHTML=`<select class="wi" style="flex:2">${sel}</select><input type="number" min="1" value="1" class="wq" style="max-width:80px" oninput="woTotal()">`;document.getElementById('woItems').appendChild(d);d.querySelector('.wi').onchange=woTotal;}
 function woTotal(){let t=0;$all('#woItems .row').forEach(r=>{const p=DB.products.find(x=>x.id===r.querySelector('.wi').value);const q=+r.querySelector('.wq').value||0;if(p)t+=p.price*q;});document.getElementById('woTotal').textContent=money(t);}
 function waiterSale(payment){
@@ -759,8 +800,21 @@ function renderBoss(){
       <div class="kpi"><div class="n">${money(waiter)}</div><div class="l">Waiter sales</div></div>
       <div class="kpi"><div class="n">${low}</div><div class="l">Low-stock items</div></div>
     </div>
+    <h3 style="margin-top:16px">Sales by hour (today)</h3>
+    ${salesChart(s)}
     <h3 style="margin-top:16px">Per Waiter (today)</h3>${wRows}
     <h3 style="margin-top:16px">Low Stock</h3>${DB.products.filter(p=>(p.stock||0)<=(p.low||5)).map(p=>`<div class="line"><span>${p.name}</span><span class="pill pending">${p.stock} left</span></div>`).join('')||'<p class="muted small">All good.</p>'}`;
+}
+function salesChart(s){
+  const buckets=Array(24).fill(0);
+  s.forEach(e=>{const h=new Date(e.ts).getHours();buckets[h]+=e.amount;});
+  const max=Math.max(1,...buckets);
+  const bars=buckets.map((v,h)=>{
+    const hpct=Math.round(v/max*100);
+    return `<div class="bar" title="${h}:00 — ${money(v)}" style="height:${hpct}%"><span class="barv">${v?money(v):''}</span></div>`;
+  }).join('');
+  const labels=[0,3,6,9,12,15,18,21].map(h=>`<span class="ax">${h}h</span>`).join('');
+  return `<div class="chart"><div class="bars">${bars}</div><div class="axis">${labels}</div></div>`;
 }
 function renderNight(){
   const s=todaySales();
@@ -810,6 +864,7 @@ function renderBossSet(){
     <div class="kpi" style="margin-bottom:10px"><div class="l">Boss PIN (4 digits)</div><input id="setPin" maxlength="4" inputmode="numeric" value="${DB.settings.bossPin||'0000'}" style="margin-top:6px;max-width:140px"></div>
     <div class="kpi" style="margin-bottom:10px"><div class="l">Counter PIN (4 digits)</div><input id="setCounterPin" maxlength="4" inputmode="numeric" value="${DB.settings.counterPin||'0000'}" style="margin-top:6px;max-width:140px"></div>
     <div class="kpi" style="margin-bottom:10px"><div class="l">This waiter's ID (for Waiter role)</div><select id="setWaiter" style="margin-top:6px">${DB.waiters.map(w=>`<option value="${w.id}" ${DB.settings.waiterId===w.id?'selected':''}>${w.name}</option>`).join('')}</select></div>
+    <div class="kpi" style="margin-bottom:10px"><div class="l">Tables / Floor (comma-separated, e.g. T1,T2,Bar1)</div><input id="setTables" value="${(DB.tables||[]).map(t=>t.name).join(',')}" style="margin-top:6px"></div>
     <div class="kpi" style="margin-bottom:10px"><div class="l">Cloud Sync</div>
       <label style="font-size:14px;display:flex;align-items:center;gap:8px;margin-top:6px"><input type="checkbox" id="setSync" ${(!DB.settings.cloud||DB.settings.cloud.enabled)?'checked':''} style="width:auto"> Enable live multi-device sync</label>
       <p class="small muted" style="margin-top:6px">When on, waiter and counter devices share one live ledger (needs internet). Works fully offline otherwise — staff use the Counter device.</p>
@@ -825,6 +880,8 @@ function saveSettings(){
   DB.settings.waiterId=document.getElementById('setWaiter').value;
   const ds=document.getElementById('setDayStart').value;
   if(/^\d{1,2}$/.test(ds)&&+ds>=0&&+ds<=23)DB.settings.dayStart=+ds;else DB.settings.dayStart=5;
+  const tblRaw=document.getElementById('setTables').value.split(',').map(x=>x.trim()).filter(Boolean);
+  DB.tables=tblRaw.map(n=>({name:n}));
   const cloudOn=document.getElementById('setSync').checked;
   if(cloudOn){ if(syncInit()){DB.settings.cloud={enabled:true};startSync();syncConfig();toast('Cloud Sync ON');} else {toast('Cloud Sync not configured — add Firebase config in code');} }
   else {DB.settings.cloud={enabled:false};if(syncUnsub){syncUnsub();syncUnsub=null;}if(cfgUnsub){cfgUnsub();cfgUnsub=null;}syncReady=false;toast('Cloud Sync OFF (local)');}
@@ -849,6 +906,7 @@ function buildConfig(){
     waiterId: d.waiterId || null,
     dayStart: (d.dayStart!=null)?d.dayStart:5,
     cloud: d.cloud || { enabled: true },
+    tables: (DB.tables && DB.tables.length) ? DB.tables.map(t=>({name:t.name})) : [{name:'T1'},{name:'T2'},{name:'T3'},{name:'T4'},{name:'Bar1'}],
     products: DB.products.map(p => ({ id: p.id, name: p.name, cat: p.cat, price: p.price, low: p.low || 5, stock: p.stock || 0 })),
     waiters: DB.waiters.map(w => ({ id: w.id, name: w.name, pin: w.pin || '0000' })),
     credit: (DB.credit || []).map(c => ({ id: c.id, name: c.name, phone: c.phone || '', limit: c.limit || null })),
@@ -872,6 +930,7 @@ function applyConfig(c){
   if(c.cloud) DB.settings.cloud = c.cloud;
   // waiters: replace list (PINs included) but keep any local-only extras absent remotely
   if(Array.isArray(c.waiters)) DB.waiters = c.waiters.map(w => ({ id: w.id, name: w.name, pin: w.pin || '0000' }));
+  if(Array.isArray(c.tables) && c.tables.length) DB.tables = c.tables.map(t => ({ name: t.name }));
   if(Array.isArray(c.credit)) DB.credit = c.credit.map(x => ({ id: x.id, name: x.name, phone: x.phone || '', limit: x.limit || null }));
   // products: upsert by id, preserving this device's operational stock
   if(Array.isArray(c.products)){
