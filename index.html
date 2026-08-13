@@ -172,15 +172,21 @@
 <!-- PIN MODAL -->
 <div class="modal" id="pinModal">
   <div class="sheet" style="max-width:360px;text-align:center">
-    <h3>🔴 Boss PIN</h3>
-    <p class="small muted">Default PIN is 0000</p>
+    <h3 id="pinTitle">Enter PIN</h3>
+    <p class="small muted" id="pinHint">Default PIN is 0000</p>
     <div class="pinbox">
       <input id="p1" maxlength="1" inputmode="numeric"><input id="p2" maxlength="1" inputmode="numeric"><input id="p3" maxlength="1" inputmode="numeric"><input id="p4" maxlength="1" inputmode="numeric">
     </div>
     <div class="row" style="justify-content:center">
-      <button class="btn ghost" onclick="closeModal('pinModal')">Cancel</button>
+      <button class="btn ghost" onclick="closeModal('pinModal');if(pendingPinCancel)pendingPinCancel()">Cancel</button>
       <button class="btn purple" onclick="checkPin()">Unlock</button>
     </div>
+  </div>
+<!-- WAITER PICKER -->
+<div class="modal" id="waiterPickModal">
+  <div class="sheet">
+    <h3>Select Waiter</h3>
+    <div id="waiterPickList"></div>
   </div>
 </div>
 
@@ -309,10 +315,10 @@ const SEED_PRODUCTS=[
   {id:'b4',name:'Tonic/Soda',cat:'Mixers',price:4,stock:80,low:20},
   {id:'f1',name:'SmallChops',cat:'Food',price:15,stock:30,low:8},
 ];
-const SEED_WAITERS=[{id:'w1',name:'Kofi'},{id:'w2',name:'Ama'}];
+const SEED_WAITERS=[{id:'w1',name:'Kofi',pin:'0000'},{id:'w2',name:'Ama',pin:'0000'}];
 
 function load(){try{const d=JSON.parse(localStorage.getItem(KEY));if(d&&d.products)return d;}catch(e){}
-  const def={role:null,deviceId:uid(),products:SEED_PRODUCTS.slice(),waiters:SEED_WAITERS.slice(),credit:[],ledger:[],settings:{bossPin:'0000',venue:'Bamobi City Lounge',waiterId:null}};
+  const def={role:null,deviceId:uid(),products:SEED_PRODUCTS.slice(),waiters:SEED_WAITERS.slice(),credit:[],ledger:[],settings:{bossPin:'0000',counterPin:'0000',venue:'Bamobi City Lounge',waiterId:null}};
   return def;}
 function save(){localStorage.setItem(KEY,JSON.stringify(DB));}
 function uid(){return Math.random().toString(36).slice(2,10)+Date.now().toString(36);}
@@ -324,12 +330,26 @@ function $all(s){return Array.from(document.querySelectorAll(s));}
 let DB=load();
 let activeRole=null;
 let pendingPinResolve=null;
+let pendingPinCancel=null;
 
 /* ---------- launch / roles ---------- */
 function pickRole(r){
-  if(r==='boss'){openPin(()=>enterRole('boss'));return;}
-  enterRole(r);
+  if(r==='boss'){openPin(()=>enterRole('boss'),'Boss PIN','Enter the owner PIN');return;}
+  if(r==='counter'){openPin(()=>enterRole('counter'),'Counter PIN','Enter the counter PIN');return;}
+  if(r==='waiter'){openWaiterPick();return;}
 }
+function openWaiterPick(){
+  if(!DB.waiters.length){toast('No waiters set up - ask Boss to add one');return;}
+  const el=document.getElementById('waiterPickList');
+  el.innerHTML=DB.waiters.map(w=>`<div class="ticket" style="cursor:pointer" onclick="waiterPicked('${w.id}')"><div class="tt">${w.name}</div><div class="waiter small muted">Tap then enter PIN</div></div>`).join('');
+  openModal('waiterPickModal');
+}
+function waiterPicked(id){
+  closeModal('waiterPickModal');
+  pendingWaiterId=id;
+  openPin(()=>enterRole('waiter'),'Waiter PIN','Enter your PIN: '+DB.waiters.find(x=>x.id===id).name);
+}
+let pendingWaiterId=null;
 function enterRole(r){
   activeRole=r;
   document.getElementById('launch').classList.add('hidden');
@@ -347,12 +367,17 @@ function enterRole(r){
   if(r==='boss'){switchB('bdash');renderBoss();}
   updateSync();
 }
-function goLaunch(){document.getElementById('app').classList.add('hidden');document.getElementById('launch').classList.remove('hidden');activeRole=null;}
+function goLaunch(){document.getElementById('app').classList.add('hidden');document.getElementById('launch').classList.remove('hidden');activeRole=null;pendingWaiterId=null;}
 
 /* ---------- PIN ---------- */
-function openPin(resolve){pendingPinResolve=resolve;openModal('pinModal');['p1','p2','p3','p4'].forEach((id,i)=>{const e=document.getElementById(id);e.value='';});document.getElementById('p1').focus();
+function openPin(resolve,title,hint){pendingPinResolve=resolve;pendingPinCancel=null;if(title)document.getElementById('pinTitle').textContent=title;if(hint)document.getElementById('pinHint').textContent=hint;openModal('pinModal');['p1','p2','p3','p4'].forEach((id,i)=>{const e=document.getElementById(id);e.value='';});document.getElementById('p1').focus();
   ['p1','p2','p3','p4'].forEach((id,i)=>{const e=document.getElementById(id);e.oninput=()=>{if(e.value&&i<3)document.getElementById('p'+(i+2)).focus();};});}
-function checkPin(){const code=['p1','p2','p3','p4'].map(id=>document.getElementById(id).value).join('');if(code===DB.settings.bossPin){closeModal('pinModal');const f=pendingPinResolve;pendingPinResolve=null;if(f)f();}else{toast('Wrong PIN');}}
+function checkPin(){const code=['p1','p2','p3','p4'].map(id=>document.getElementById(id).value).join('');const role=document.getElementById('pinTitle').textContent;
+  let ok=false;
+  if(role.indexOf('Waiter')>=0){const w=DB.waiters.find(x=>x.id===pendingWaiterId);ok=w&&code===(w.pin||'0000');}
+  else if(role.indexOf('Counter')>=0){ok=code===(DB.settings.counterPin||'0000');}
+  else {ok=code===DB.settings.bossPin;}
+  if(ok){closeModal('pinModal');const f=pendingPinResolve;pendingPinResolve=null;pendingWaiterId=null;if(f)f();}else{toast('Wrong PIN');}}
 
 /* ---------- modal helpers ---------- */
 function openModal(id){document.getElementById(id).classList.add('on');}
@@ -597,15 +622,17 @@ function saveProduct(){
   save();closeModal('prodModal');toast('Saved');if(activeRole==='boss')renderBossMenu();if(activeRole==='counter')renderStock();
 }
 function renderBossStaff(){
-  const waitRows=DB.waiters.map(w=>`<div class="ticket"><div class="tt">${w.name}</div></div>`).join('')||'<p class="muted small">No waiters.</p>';
+  const waitRows=DB.waiters.map(w=>`<div class="ticket"><div class="tt">${w.name}</div><div class="waiter small muted">PIN: ${w.pin||'0000'}</div><div class="row" style="margin-top:6px"><button class="btn sm ghost" onclick="resetWaiterPin('${w.id}')">Reset PIN</button></div></div>`).join('')||'<p class="muted small">No waiters.</p>';
   const credRows=DB.credit.map(c=>`<div class="ticket"><div class="tt">${c.name}</div><div class="waiter" style="color:var(--muted);font-size:12px">${c.phone||''} · limit ${c.limit?money(c.limit):'—'}</div></div>`).join('')||'<p class="muted small">No credit customers.</p>';
   document.getElementById('bossStaff').innerHTML=`<div class="row"><button class="btn" onclick="openModal(\'waitModal\')">+ Add Waiter</button><button class="btn ghost" onclick="openModal(\'credModal\')">+ Credit Customer</button></div>
     <h3>Waiters</h3>${waitRows}<h3>Credit Customers</h3>${credRows}`;
 }
+function resetWaiterPin(id){const w=DB.waiters.find(x=>x.id===id);if(w){w.pin='0000';save();toast('PIN reset to 0000');renderBossStaff();}}
 function renderBossSet(){
   document.getElementById('bossSet').innerHTML=`
     <div class="kpi" style="margin-bottom:10px"><div class="l">Venue name</div><input id="setVenue" value="${DB.settings.venue||''}" style="margin-top:6px"></div>
     <div class="kpi" style="margin-bottom:10px"><div class="l">Boss PIN (4 digits)</div><input id="setPin" maxlength="4" inputmode="numeric" value="${DB.settings.bossPin||'0000'}" style="margin-top:6px;max-width:140px"></div>
+    <div class="kpi" style="margin-bottom:10px"><div class="l">Counter PIN (4 digits)</div><input id="setCounterPin" maxlength="4" inputmode="numeric" value="${DB.settings.counterPin||'0000'}" style="margin-top:6px;max-width:140px"></div>
     <div class="kpi" style="margin-bottom:10px"><div class="l">This waiter's ID (for Waiter role)</div><select id="setWaiter" style="margin-top:6px">${DB.waiters.map(w=>`<option value="${w.id}" ${DB.settings.waiterId===w.id?'selected':''}>${w.name}</option>`).join('')}</select></div>
     <div class="kpi" style="margin-bottom:10px"><div class="l">Cloud Sync</div>
       <label style="font-size:14px;display:flex;align-items:center;gap:8px;margin-top:6px"><input type="checkbox" id="setSync" ${DB.settings.cloud&&DB.settings.cloud.enabled?'checked':''} style="width:auto"> Enable live multi-device sync</label>
@@ -616,6 +643,7 @@ function renderBossSet(){
 function saveSettings(){
   DB.settings.venue=document.getElementById('setVenue').value.trim()||'Bamobi City Lounge';
   const pin=document.getElementById('setPin').value.trim();if(/^\d{4}$/.test(pin))DB.settings.bossPin=pin;
+  const cpin=document.getElementById('setCounterPin').value.trim();if(/^\d{4}$/.test(cpin))DB.settings.counterPin=cpin;
   DB.settings.waiterId=document.getElementById('setWaiter').value;
   const cloudOn=document.getElementById('setSync').checked;
   if(cloudOn){ if(syncInit()){DB.settings.cloud={enabled:true};startSync();toast('Cloud Sync ON');} else {toast('Cloud Sync not configured — add Firebase config in code');} }
@@ -625,7 +653,7 @@ function saveSettings(){
 }
 
 /* ---------- boss add ops ---------- */
-function saveWaiter(){const n=document.getElementById('wName').value.trim();if(!n){toast('Name required');return;}DB.waiters.push({id:uid(),name:n});save();closeModal('waitModal');toast('Waiter added');renderBossStaff();}
+function saveWaiter(){const n=document.getElementById('wName').value.trim();if(!n){toast('Name required');return;}const pin=(Math.floor(1000+Math.random()*9000)).toString();DB.waiters.push({id:uid(),name:n,pin});save();closeModal('waitModal');toast('Waiter added - PIN '+pin);renderBossStaff();}
 function saveCredit(){const n=document.getElementById('cName').value.trim();if(!n){toast('Name required');return;}DB.credit.push({id:uid(),name:n,phone:document.getElementById('cPhone').value.trim(),limit:+document.getElementById('cLimit').value||null});save();closeModal('credModal');toast('Customer added');renderBossStaff();}
 
 /* ---------- backup / sync ---------- */
