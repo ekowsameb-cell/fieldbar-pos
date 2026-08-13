@@ -483,7 +483,6 @@ function enterRole(r){
   const chip=document.getElementById('roleChip');chip.innerHTML='<span class="ricon-sm '+r+'">'+ROLE_ICONS[r]+'</span>'+label;
   document.getElementById('appTitle').textContent=(DB.settings.venue||'Bamobi City Lounge')+' POS';
   // tab accents
-  $all('#role-'+r+' .tab').forEach(t=>t.style.setProperty('--on',bg));
   if(r==='counter'){switchC('cwalk');renderCounterToday();}
   if(r==='waiter'){switchW('wnew');renderWaiterToday();}
   if(r==='boss'){switchB('bdash');renderBoss();}
