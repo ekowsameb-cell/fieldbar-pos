@@ -423,11 +423,11 @@ function syncInit(){
   }catch(e){return false;}
 }
 const SEED_PRODUCTS=[
-  {id:'b1',name:'Star Beer',cat:'Beer',price:8,stock:60,low:15},
-  {id:'b2',name:'Guinness',cat:'Beer',price:12,stock:40,low:10},
-  {id:'b3',name:'Gin (shot)',cat:'Spirits',price:10,stock:50,low:12},
-  {id:'b4',name:'Tonic/Soda',cat:'Mixers',price:4,stock:80,low:20},
-  {id:'f1',name:'SmallChops',cat:'Food',price:15,stock:30,low:8},
+  {id:'b1',name:'Star Beer',cat:'Beer',price:8,stock:60,cstock:24,low:15},
+  {id:'b2',name:'Guinness',cat:'Beer',price:12,stock:40,cstock:16,low:10},
+  {id:'b3',name:'Gin (shot)',cat:'Spirits',price:10,stock:50,cstock:20,low:12},
+  {id:'b4',name:'Tonic/Soda',cat:'Mixers',price:4,stock:80,cstock:30,low:20},
+  {id:'f1',name:'SmallChops',cat:'Food',price:15,stock:30,cstock:12,low:8},
 ];
 const SEED_WAITERS=[{id:'w1',name:'Kofi',pin:'0000'},{id:'w2',name:'Ama',pin:'0000'}];
 const SEED_TABLES=[{name:'T1'},{name:'T2'},{name:'T3'},{name:'T4'},{name:'T5'},{name:'T6'},{name:'Bar1'},{name:'Bar2'}];
@@ -463,6 +463,9 @@ function applyTheme(){document.body.classList.toggle('theme-light', (DB.settings
 let DB=load();
 applyTheme();
 paintIcons();
+// backfill cstock (counter draw) for installs created before v2.30
+DB.products.forEach(p=>{ if(p.cstock==null){ p.cstock=Math.round((p.stock||0)*0.4); } });
+if(DB.restockRequests==null)DB.restockRequests=[];
 let activeRole=null;
 let pendingPinResolve=null;
 let pendingPinCancel=null;
@@ -597,8 +600,8 @@ function counterSale(payment){
   const amount=items.reduce((s,i)=>s+i.qty*i.price,0);
   const entry={id:uid(),ts:new Date().toISOString(),type:'sale',role:'counter',table:document.getElementById('csTable').value||'Walk-in',items,payment,amount,status:'paid',waiterId:null,synced:false};
   DB.ledger.push(entry);
-  items.forEach(i=>{const p=DB.products.find(x=>x.id===i.id);if(p)p.stock=Math.max(0,(p.stock||0)-i.qty);});
-  save();closeModal('csaleModal');syncPush(entry);toast('Sale recorded');renderCounterToday();
+  items.forEach(i=>{const p=DB.products.find(x=>x.id===i.id);if(p)p.cstock=Math.max(0,(p.cstock||0)-i.qty);});
+  save();closeModal('csaleModal');syncPush(entry);toast('Sale recorded');renderCounterToday();renderStock();
 }
 function renderPending(){
   const all=DB.ledger.filter(e=>e.role==='waiter'&&e.status==='sent');
@@ -624,21 +627,25 @@ function renderPending(){
 }
 function fulfill(id){
   const e=DB.ledger.find(x=>x.id===id);if(!e)return;
-  e.items.forEach(i=>{const p=DB.products.find(x=>x.id===i.id);if(p)p.stock=Math.max(0,(p.stock||0)-i.qty);});
-  e.status='fulfilled';save();syncPush(e);toast('Fulfilled — stock updated');renderPending();renderStock();
+  e.items.forEach(i=>{const p=DB.products.find(x=>x.id===i.id);if(p)p.cstock=Math.max(0,(p.cstock||0)-i.qty);});
+  e.status='fulfilled';save();syncPush(e);toast('Fulfilled — counter stock out');renderPending();renderStock();
 }
 function renderStock(){
   const el=document.getElementById('stockList');
-  el.innerHTML='<div class="row"><button class="btn" onclick="openModal(\'prodModal\')">+ Add Item</button></div>'+DB.products.map(p=>{
-    const low=(p.stock||0)<=(p.low||5);
-    return `<div class="ticket ${low?'':''}" style="border-left-color:${low?'var(--warn)':'var(--counter)'}">
-      <div class="top"><span class="tt">${p.name}</span><span class="pill ${low?'pending':'paid'}">${p.stock} left</span></div>
+  const rows=DB.products.map(p=>{
+    const cs=(p.cstock||0);
+    const low=cs<=(p.clow!=null?p.clow:(p.low||5));
+    return `<div class="ticket" style="border-left-color:${low?'var(--warn)':'var(--counter)'}">
+      <div class="top"><span class="tt">${p.name}</span><span class="pill ${low?'pending':'paid'}">${cs} at counter</span></div>
       <div class="waiter">${p.cat} · ${money(p.price)} ${low?'· ⚠ LOW':''}</div>
-      <div class="row" style="margin-top:8px"><input type="number" value="${p.stock}" style="max-width:110px" id="stk-${p.id}"><button class="btn sm" onclick="adjStock('${p.id}')">Set</button></div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn sm warn" onclick="requestRestock('${p.id}')">📣 Alert Boss — low</button>
+      </div>
     </div>`;
   }).join('');
+  el.innerHTML='<p class="small muted" style="margin-bottom:8px">Counter stock is managed by the Boss. You can only view it and alert the Boss when low.</p>'+rows;
 }
-function adjStock(id){const v=+document.getElementById('stk-'+id).value||0;const p=DB.products.find(x=>x.id===id);if(p){p.stock=v;save();toast('Stock updated');renderStock();}}
+function requestRestock(id){const p=DB.products.find(x=>x.id===id);if(!p)return;DB.restockRequests=DB.restockRequests||[];DB.restockRequests.push({id:uid(),productId:id,product:p.name,ts:new Date().toISOString(),done:false});save();toast('Boss alerted — restock requested');}
 
 /* ---------- COUNTER REPORTS (supervisor) ---------- */
 function renderReportControls(){
@@ -753,9 +760,10 @@ function waiterSale(payment){
 }
 function renderWaiterOrders(){
   const id=currentWaiterId();
-  const list=DB.ledger.filter(e=>e.role==='waiter'&&e.waiterId===id).sort((a,b)=>b.ts.localeCompare(a.ts));
+  const today=todayStr();
+  const list=DB.ledger.filter(e=>e.role==='waiter'&&e.waiterId===id&&bizDayKey(e.ts).startsWith(today)).sort((a,b)=>b.ts.localeCompare(a.ts));
   const el=document.getElementById('waiterOrders');
-  if(!list.length){el.innerHTML='<p class="muted">No orders yet.</p>';return;}
+  if(!list.length){el.innerHTML='<p class="muted">No orders today. Previous days stay in your reports.</p>';return;}
   el.innerHTML=list.map(e=>{
     const lines=e.items.map(i=>`<div class="line"><span class="q">${i.qty}×</span><span>${i.name}</span><span>${money(i.qty*i.price)}</span></div>`).join('');
     return `<div class="ticket" style="border-left-color:var(--waiter)">
@@ -886,13 +894,32 @@ Low stock: ${DB.products.filter(p=>(p.stock||0)<=(p.low||5)).map(p=>p.name+'('+p
     <button class="btn ghost" onclick="exportBackup()">Export Backup</button></div>`;
 }
 function renderBossMenu(){
-  document.getElementById('bossMenu').innerHTML='<div class="row"><button class="btn" onclick="openModal(\'prodModal\')">+ Add Item</button></div>'+DB.products.map(p=>`<div class="ticket">
-    <div class="top"><span class="tt">${p.name}</span><span class="pill ${ (p.stock||0)<=(p.low||5)?'pending':'paid'}">${p.stock} left</span></div>
-    <div class="waiter" style="color:var(--muted);font-size:12px">${p.cat} · ${money(p.price)}</div>
-    <div class="row" style="margin-top:6px"><button class="btn sm ghost" onclick="editProduct('${p.id}')">Edit</button><input type="number" value="${p.stock}" style="max-width:100px" id="bs-${p.id}"><button class="btn sm" onclick="bossStock('${p.id}')">Set</button></div>
-  </div>`).join('');
+  const bossVal=DB.products.reduce((s,p)=>s+(p.stock||0)*(p.price||0),0);
+  const counterVal=DB.products.reduce((s,p)=>s+(p.cstock||0)*(p.price||0),0);
+  const reqs=(DB.restockRequests||[]).filter(r=>!r.done);
+  const reqHtml=reqs.length?`<div class="ticket" style="border-left-color:var(--warn)"><div class="tt">📣 Restock alerts (${reqs.length})</div>${reqs.map(r=>`<div class="line"><span>${r.product}</span><span class="small muted">${fmtDateTime(r.ts)}</span></div>`).join('')}<button class="btn sm ghost" style="margin-top:6px" onclick="clearRestock()">Mark all handled</button></div>`:'';
+  const rows=DB.products.map(p=>{
+    const low=(p.stock||0)<=(p.low||5);
+    return `<div class="ticket" style="border-left-color:${low?'var(--warn)':'var(--boss)'}">
+      <div class="top"><span class="tt">${p.name}</span><span class="pill ${low?'pending':'paid'}">${p.stock} in store</span></div>
+      <div class="waiter" style="color:var(--muted);font-size:12px">${p.cat} · ${money(p.price)} · counter has ${p.cstock||0} · value ${money((p.stock||0)*(p.price||0))}</div>
+      <div class="row" style="margin-top:6px;flex-wrap:wrap;gap:6px">
+        <input type="number" value="${p.stock}" style="max-width:90px" id="bs-${p.id}"><button class="btn sm" onclick="bossStock('${p.id}')">Set store</button>
+        <input type="number" value="1" min="1" style="max-width:70px" id="bt-${p.id}"><button class="btn sm purple" onclick="transferStock('${p.id}')">⇨ to Counter</button>
+        <button class="btn sm ghost" onclick="editProduct('${p.id}')">Edit</button>
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('bossMenu').innerHTML=
+    `<div class="row"><button class="btn" onclick="openModal('prodModal')">+ Add Item</button></div>
+     <div class="kpi" style="margin-bottom:10px"><div class="n">${money(bossVal)}</div><div class="l">Stock value — main store (Boss)</div></div>
+     <div class="kpi" style="margin-bottom:10px"><div class="n">${money(counterVal)}</div><div class="l">Stock value — Counter draw</div></div>
+     ${reqHtml}
+     <h3 style="margin-top:12px">Inventory</h3>${rows}`;
 }
-function bossStock(id){const v=+document.getElementById('bs-'+id).value||0;const p=DB.products.find(x=>x.id===id);if(p){p.stock=v;save();toast('Stock set');renderBossMenu();}}
+function bossStock(id){const v=+document.getElementById('bs-'+id).value||0;const p=DB.products.find(x=>x.id===id);if(p){p.stock=v;save();toast('Store stock set');renderBossMenu();publishConfig();}}
+function transferStock(id){const q=+document.getElementById('bt-'+id).value||0;const p=DB.products.find(x=>x.id===id);if(!p||q<=0){toast('Enter qty');return;}if(q>(p.stock||0)){toast('Not enough in store');return;}p.stock=(p.stock||0)-q;p.cstock=(p.cstock||0)+q;save();toast(q+' '+p.name+' moved to Counter');renderBossMenu();publishConfig();}
+function clearRestock(){DB.restockRequests=(DB.restockRequests||[]).map(r=>{r.done=true;return r;});save();renderBossMenu();}
 let editPid=null;
 function editProduct(id){const p=DB.products.find(x=>x.id===id);editPid=id;document.getElementById('prodTitle').textContent='Edit Item';document.getElementById('pName').value=p.name;document.getElementById('pCat').value=p.cat;document.getElementById('pPrice').value=p.price;document.getElementById('pStock').value=p.stock;document.getElementById('pLow').value=p.low||'';openModal('prodModal');}
 function saveProduct(){
