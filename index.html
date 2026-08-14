@@ -463,6 +463,24 @@ function applyTheme(){document.body.classList.toggle('theme-light', (DB.settings
 let DB=load();
 applyTheme();
 paintIcons();
+/* ===== TRIAL MODE GUARD (v2.30-trial) =====
+   This public copy is a time-limited demo. It hard-stops after TRIAL_EXPIRY.
+   The full version is deployed separately once payment is settled. */
+(function(){
+  const TRIAL_EXPIRY='2026-08-21T23:59:59+08:00';
+  const exp=Date.now() > new Date(TRIAL_EXPIRY).getTime();
+  if(exp){
+    const o=document.createElement('div');
+    o.style.cssText='position:fixed;inset:0;z-index:99999;background:#0e1014;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;font-family:Segoe UI,Arial,sans-serif';
+    o.innerHTML='<div style="font-size:42px;font-weight:800;color:#E11D2A;letter-spacing:1px">TRIAL ENDED</div>'+'<div style="margin-top:14px;font-size:16px;color:#cbd5e1;max-width:420px;line-height:1.6">This demonstration copy of FieldBar POS has expired.<br><br>To activate the full version for Bamobi City Lounge, contact <b>Providers Consultancy</b> to complete your licence.</div>'+'<div style="margin-top:18px;font-size:13px;color:#64748b">Powered by Providers Consultancy</div>';
+    document.body.appendChild(o);
+    throw new Error('trial-expired');
+  }
+  const b=document.createElement('div');
+  b.style.cssText='position:fixed;top:0;left:0;right:0;z-index:9998;background:#E11D2A;color:#fff;text-align:center;font-size:12px;font-weight:700;padding:4px;letter-spacing:.5px';
+  b.textContent='⚠ TRIAL DEMO \u2014 expires 21 Aug 2026 \u00b7 Powered by Providers Consultancy';
+  document.body.appendChild(b);
+})();
 // backfill cstock (counter draw) for installs created before v2.30
 DB.products.forEach(p=>{ if(p.cstock==null){ p.cstock=Math.round((p.stock||0)*0.4); } });
 if(DB.restockRequests==null)DB.restockRequests=[];
