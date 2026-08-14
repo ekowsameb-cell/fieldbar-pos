@@ -169,9 +169,9 @@
   <img src="logo.png" alt="Bamobi City Lounge" style="width:130px;height:auto;display:block;margin:0 auto 6px;border-radius:12px">
   <h2>Bamobi City Lounge</h2>
   <p class="sub">Field POS — choose your role to start</p>
-  <button class="rolebtn counter" onclick="pickRole('counter')"><span class="ricon-sm counter">${ROLE_ICONS.counter}</span><span>Counter<small>Walk-in sales + fulfill waiter orders + own stock</small></span></button>
-  <button class="rolebtn waiter" onclick="pickRole('waiter')"><span class="ricon-sm waiter">${ROLE_ICONS.waiter}</span><span>Waiter<small>Take table orders, collect money, send to counter</small></span></button>
-  <button class="rolebtn boss" onclick="pickRole('boss')"><span class="ricon-sm boss">${ROLE_ICONS.boss}</span><span>Boss<small>Dashboard, close night, manage menu & staff</small></span></button>
+  <button class="rolebtn counter" onclick="pickRole('counter')"><span class="ricon-sm counter" data-ricon="counter"></span><span>Counter<small>Walk-in sales + fulfill waiter orders + own stock</small></span></button>
+  <button class="rolebtn waiter" onclick="pickRole('waiter')"><span class="ricon-sm waiter" data-ricon="waiter"></span><span>Waiter<small>Take table orders, collect money, send to counter</small></span></button>
+  <button class="rolebtn boss" onclick="pickRole('boss')"><span class="ricon-sm boss" data-ricon="boss"></span><span>Boss<small>Dashboard, close night, manage menu & staff</small></span></button>
   <p class="small muted" style="text-align:center;margin-top:18px">Offline-first. Works without internet — all data stays on this device.<br>If internet drops, staff use the <b>Counter device</b> for everything.</p>
   <p class="small" style="text-align:center;margin-top:10px;color:var(--muted)">⚡ Powered by <b>Providers Consultancy</b></p>
 </div>
@@ -191,7 +191,7 @@
   <!-- COUNTER -->
   <div id="role-counter" class="roleview hidden">
     <div class="role-hero">
-      <div class="ricon counter">${ROLE_ICONS.counter}</div>
+      <div class="ricon counter" data-ricon="counter"></div>
       <div class="rtxt"><h3>Counter · Supervisor</h3><p>Walk-in sales, fulfill waiter orders, manage stock & reports</p></div>
     </div>
     <div class="tabbar">
@@ -236,7 +236,7 @@
   <!-- WAITER -->
   <div id="role-waiter" class="roleview hidden">
     <div class="role-hero">
-      <div class="ricon waiter">${ROLE_ICONS.waiter}</div>
+      <div class="ricon waiter" data-ricon="waiter"></div>
       <div class="rtxt"><h3>Waiter · Floor Service</h3><p>Take table orders, collect money, send to counter</p></div>
     </div>
     <div class="tabbar">
@@ -263,7 +263,7 @@
   <!-- BOSS -->
   <div id="role-boss" class="roleview hidden">
     <div class="role-hero">
-      <div class="ricon boss">${ROLE_ICONS.boss}</div>
+      <div class="ricon boss" data-ricon="boss"></div>
       <div class="rtxt"><h3>Boss · Owner Dashboard</h3><p>Sales overview, close night, manage menu, staff & settings</p></div>
     </div>
     <div class="tabbar">
@@ -442,6 +442,7 @@ const ROLE_ICONS={
   waiter:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="2"/><path d="M12 7v6m0 0l5 4M12 13l-5 4"/><path d="M9 9h6"/></svg>',
   boss:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.5-4.8 2.5.9-5.4L3.2 8.7l5.4-.8z"/><path d="M9 21h6"/></svg>'
 };
+function paintIcons(){document.querySelectorAll('[data-ricon]').forEach(el=>{const r=el.getAttribute('data-ricon');if(ROLE_ICONS[r])el.innerHTML=ROLE_ICONS[r];});}
 function uid(){return Math.random().toString(36).slice(2,10)+Date.now().toString(36);}
 function todayStr(){return bizDayKey(new Date());}
 function bizDayKey(d){
@@ -461,6 +462,7 @@ function $all(s){return Array.from(document.querySelectorAll(s));}
 function applyTheme(){document.body.classList.toggle('theme-light', (DB.settings&&DB.settings.theme)==='light');}
 let DB=load();
 applyTheme();
+paintIcons();
 let activeRole=null;
 let pendingPinResolve=null;
 let pendingPinCancel=null;
