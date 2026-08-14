@@ -459,6 +459,7 @@ function toast(m){const t=document.getElementById('toast');t.textContent=m;t.cla
 function $(s){return document.querySelector(s);}
 function $all(s){return Array.from(document.querySelectorAll(s));}
 function applyTheme(){document.body.classList.toggle('theme-light', (DB.settings&&DB.settings.theme)==='light');}
+let DB=load();
 applyTheme();
 let activeRole=null;
 let pendingPinResolve=null;
